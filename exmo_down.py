@@ -1,20 +1,13 @@
-import hashlib
-import hmac
-import http.client
-import json
 import logging
 import time
-import urllib
-import urllib.parse
 
 # ключи API, которые предоставила exmo
 import math
 
-API_KEY = 'K-020d1e06761624afa1ca3d2a579089746968dfc4'
-# обратите внимание, что добавлена 'b' перед строкой
-API_SECRET = b'S-9b85d0a24d107ce1d0fd6c516f609debc605aefc'
-
 # Тонкая настройка
+from exceptions import ApiError
+from exmo_api import ExmoApi
+
 CURRENCY_1 = 'BTC'
 CURRENCY_2 = 'USD'
 
@@ -36,28 +29,18 @@ LAST_TRADES_NUMBER = 20
 
 STOCK_TIME_OFFSET = 0  # Если расходится время биржи с текущим
 
-# базовые настройки
-API_URL = 'api.exmo.me'
-API_VERSION = 'v1'
-
 CURRENT_PAIR = CURRENCY_1 + '_' + CURRENCY_2
 
-
 # Реализация алгоритма
-def main_flow():
+def main_flow(api):
     try:
         # Получаем список активных ордеров
-        try:
-            opened_orders = call_api('user_open_orders')[CURRENCY_1 + '_' + CURRENCY_2]
-        except KeyError:
-            logging.debug('Открытых ордеров нет')
-            opened_orders = []
+        opened_orders = api.get_open_orders(CURRENCY_1, CURRENCY_2)
 
         buy_orders = []
         # Есть ли неисполненные ордера на продажу CURRENCY_1?
         for order in opened_orders:
             if order['type'] == 'buy':
-                # if order['order_id'] != '499329939':
                 # Есть неисполненные ордера на покупку CURRENCY_1, выход
                 raise ScriptQuitCondition(
                     'Выход, ждем пока не исполнятся/закроются все ордера на покупку (один ордер может быть разбит биржей на несколько и исполняться частями)')
@@ -71,11 +54,11 @@ def main_flow():
                 # Проверяем, есть ли частично исполненные
                 logging.debug('Проверяем, что происходит с отложенным ордером %s', str(get_order_id(order)))
                 try:
-                    order_history = call_api('order_trades', order_id=get_order_id(order))
+                    order_history = api.get_order_history(get_order_id(order))
                     # по ордеру уже есть частичное выполнение, выход
                     raise ScriptQuitCondition(
                         'Выход, продолжаем надеяться допродать валюту по тому курсу, по которому уже купили часть')
-                except ScriptError as e:
+                except ApiError as e:
                     if 'Error 50304' in str(e):
                         logging.debug('Частично исполненных ордеров нет')
 
@@ -86,7 +69,7 @@ def main_flow():
                             if math.fabs(my_need_price - float(order['price'])) > float(
                                     order['price']) * BUY_PRICE_DISTRIBUTION:
                                 # Ордер уже давно висит, никому не нужен, отменяем
-                                call_api('order_cancel', order_id=get_order_id(order))
+                                api.cancel_order(get_order_id(order))
                                 raise ScriptQuitCondition(
                                     'Отменяем ордер -за ' + str(ORDER_LIFE_TIME) + ' минут не удалось продать ' + str(
                                         CURRENCY_1))
@@ -100,7 +83,7 @@ def main_flow():
                         raise ScriptQuitCondition(str(e))
 
         else:  # Открытых ордеров нет
-            balances = call_api('user_info')['balances']
+            balances = api.get_balances()
             if get_currency_2_amount_to_sell(
                     balances) >= CURRENCY_2_MIN_QUANTITY:  # Есть ли в наличии CURRENCY_1, которую можно продать?
                 """
@@ -113,9 +96,9 @@ def main_flow():
                     STOCK_FEE + PROFIT_MARKUP_2)  # сколько хотим получить за наше кол-во
                 logging.info('buy %s %s %s', str(wanna_get), str(get_currency_2_amount_to_sell(balances)), str((
                     get_currency_2_amount_to_sell(balances) / wanna_get)))
-                new_order = call_api(
-                    'order_create',
-                    pair=CURRENT_PAIR,
+                new_order = api.create_order(
+                    currency_1=CURRENCY_1,
+                    currency_2=CURRENCY_2,
                     quantity=wanna_get,
                     price=get_currency_2_amount_to_sell(balances) / wanna_get,
                     type='buy'
@@ -127,11 +110,11 @@ def main_flow():
                 # Достаточно ли денег на балансе в валюте CURRENCY_2 (Баланс >= CAN_SPEND)
                 if float(balances[CURRENCY_1]) >= CAN_SPEND:
                     my_amount, my_need_price = get_desired_sell_price()
-                    create_order_if_enough_money(my_amount, my_need_price)
+                    create_order_if_enough_money(api, my_need_price)
                 else:
                     raise ScriptQuitCondition('Выход, не хватает денег')
 
-    except ScriptError as e:
+    except ApiError as e:
         logging.error(str(e))
     except ScriptQuitCondition as e:
         logging.debug(str(e))
@@ -148,15 +131,15 @@ def get_order_id(order):
     return order['order_id']
 
 
-def create_order_if_enough_money(my_amount, my_need_price):
+def create_order_if_enough_money(api, my_need_price):
     # Допускается ли покупка такого кол-ва валюты (т.е. не нарушается минимальная сумма сделки)
-    create_order(CAN_SPEND, my_need_price)
+    create_order(api, CAN_SPEND, my_need_price)
 
 
-def create_order(my_amount, my_need_price):
-    new_order = call_api(
-        'order_create',
-        pair=CURRENT_PAIR,
+def create_order(api, my_amount, my_need_price):
+    new_order = api.create_order(
+        currency_1=CURRENCY_1,
+        currency_2=CURRENCY_2,
         quantity=my_amount,
         price=my_need_price,
         type='sell'
@@ -177,7 +160,7 @@ def get_desired_sell_price():
                          а открытые ордера покажут цены, по которым только собираются продать/купить - т.е. завышенные и заниженные.
                          Так что берем информацию из завершенных сделок.
                         """
-    deals = call_api('trades', pair=CURRENT_PAIR)
+    deals = api.get_trades(currency_1=CURRENCY_1, currency_2=CURRENCY_2)
     # prices = []
     amount = 0
     quantity = 0
@@ -205,42 +188,12 @@ def get_desired_sell_price():
     return my_amount, my_need_price
 
 
-def call_api(api_method, http_method="POST", **kwargs):
-    payload = {'nonce': int(round(time.time() * 1000))}
-
-    if kwargs:
-        payload.update(kwargs)
-    payload = urllib.parse.urlencode(payload)
-
-    H = hmac.new(key=API_SECRET, digestmod=hashlib.sha512)
-    H.update(payload.encode('utf-8'))
-    sign = H.hexdigest()
-
-    headers = {"Content-type": "application/x-www-form-urlencoded",
-               "Key": API_KEY,
-               "Sign": sign}
-    conn = http.client.HTTPSConnection(API_URL, timeout=60)
-    conn.request(http_method, "/" + API_VERSION + "/" + api_method, payload, headers)
-    response = conn.getresponse().read()
-    conn.close()
-    try:
-        obj = json.loads(response.decode('utf-8'))
-        if 'error' in obj and obj['error']:
-            raise ScriptError(obj['error'])
-        return obj
-    except json.decoder.JSONDecodeError:
-        raise ScriptError('Ошибка анализа возвращаемых данных, получена строка', response)
-
-
-class ScriptError(Exception):
-    pass
-
-
 class ScriptQuitCondition(Exception):
     pass
 
 
 if __name__ == '__main__':
+    api = ExmoApi()
     while True:
-        main_flow()
+        main_flow(api)
         time.sleep(1)
