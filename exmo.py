@@ -31,6 +31,7 @@ logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level='DEBUG
 BUY_PRICE_DISTRIBUTION = 0.001
 MAX_PARALLEL_SELLS = 5  # Максимальное количество параллельных ордеров на продажу
 DECREASE_FOR_NEW_SELL = 0.1  # При каком снижении курса можно делать параллельную закупку - 10%
+LAST_TRADES_NUMBER = 20
 
 STOCK_TIME_OFFSET = 0  # Если расходится время биржи с текущим
 
@@ -186,7 +187,9 @@ def get_desired_buy_price():
     # prices = []
     amount = 0
     quantity = 0
-    for deal in deals[CURRENT_PAIR]:
+    last_deals = deals[CURRENT_PAIR] if LAST_TRADES_NUMBER is None else deals[CURRENT_PAIR][
+                                                                        :max(LAST_TRADES_NUMBER, len(deals))]
+    for deal in last_deals:
         time_passed = time.time() + STOCK_TIME_OFFSET * 60 * 60 - int(deal['date'])
         if time_passed < AVG_PRICE_PERIOD * 60:
             # prices.append(float(deal['price']))
