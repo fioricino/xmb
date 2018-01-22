@@ -94,71 +94,77 @@ class Worker:
                 else:
                     logging.debug('Частично исполненных ордеров нет')
 
-                    time_passed = time.time() + self._stock_time_offset * 60 * 60 - int(order['created'])
-
-                    if time_passed > self._order_life_time:
-                        my_need_price = self.get_desired_reserve_price()
-                        if math.fabs(my_need_price - float(order['price'])) > float(
-                                order['price']) * self._reserve_price_distribution:
-                            # Ордер уже давно висит, никому не нужен, отменяем
-                            self._api.cancel_order(order['order_id'])
-                            raise self.ScriptQuitCondition(
-                                'Отменяем ордер -за ' + str(time_passed) + ' секунд не удалось зарезервировать ')
-                        else:
-                            raise self.ScriptQuitCondition(
-                                'Не отменяем ордер, так как курс не изменился за {} секунд: {}.'.format(time_passed,
-                                                                                                        my_need_price))
-                    else:
-                        raise self.ScriptQuitCondition(
-                            'Выход, продолжаем надеяться зарезервировать валюту по указанному ранее курсу, со времени создания ордера прошло %s секунд' % str(
-                                time_passed))
+                    self.check_reserve_order(order)
 
         else:  # Открытых ордеров нет
             balances = self._api.get_balances()
             if self.check_balance_for_profit_order(balances):  # Есть ли в наличии CURRENCY_1, которую можно продать?
-                """
-                    Высчитываем курс для продажи.
-                    Нам надо продать всю валюту, которую купили, на сумму, за которую купили + немного навара и минус комиссия биржи
-                    При этом важный момент, что валюты у нас меньше, чем купили - бирже ушла комиссия
-                    0.00134345 1.5045
-                """
-
-                quantity = self.calculate_profit_quantity(balances)
-                price = self.calculate_profit_price(quantity, balances)
-                logging.info('%s %s for %s', str(self.profit_order_type()), str(quantity), str(price),
-                             str(price))
-                new_order = self._api.create_order(
-                    currency_1=self._currency_1,
-                    currency_2=self._currency_2,
-                    quantity=quantity,
-                    price=price,
-                    type=self.profit_order_type()
-                )
-                logging.info(str(new_order))
-                logging.debug('Создан ордер на доход %s', str(new_order['order_id']))
+                self.create_profit_order(balances)
             else:
                 # CURRENCY_1 нет, надо докупить
                 # Достаточно ли денег на балансе в валюте CURRENCY_2 (Баланс >= CAN_SPEND)
                 if self.check_balance_for_reserve_order(balances):
-                    my_need_price = self.get_desired_reserve_price()
-                    my_amount = self.calculate_desired_reserve_amount(my_need_price)
-
-                    if my_amount >= self._currency_1_min_deal_size:
-                        logging.info('%s %s %s', self.profit_order_type(), str(my_amount), str(my_need_price))
-                        new_order = self._api.create_order(
-                            currency_1=self._currency_1,
-                            currency_2=self._currency_2,
-                            quantity=my_amount,
-                            price=my_need_price,
-                            type=self.reserve_order_type()
-                        )
-                        logging.info(str(new_order))
-                        logging.debug('Создан ордер на покупку %s', str(new_order['order_id']))
-
-                    else:  # мы можем купить слишком мало на нашу сумму
-                        raise self.ScriptQuitCondition('Выход, не хватает денег на создание ордера')
+                    self.create_reserve_order()
                 else:
                     raise self.ScriptQuitCondition('Выход, не хватает денег')
+
+    def check_reserve_order(self, order):
+        time_passed = time.time() + self._stock_time_offset * 60 * 60 - int(order['created'])
+        if time_passed > self._order_life_time:
+            my_need_price = self.get_desired_reserve_price()
+            if math.fabs(my_need_price - float(order['price'])) > float(
+                    order['price']) * self._reserve_price_distribution:
+                # Ордер уже давно висит, никому не нужен, отменяем
+                self._api.cancel_order(order['order_id'])
+                raise self.ScriptQuitCondition(
+                    'Отменяем ордер -за ' + str(time_passed) + ' секунд не удалось зарезервировать ')
+            else:
+                raise self.ScriptQuitCondition(
+                    'Не отменяем ордер, так как курс не изменился за {} секунд: {}.'.format(time_passed,
+                                                                                            my_need_price))
+        else:
+            raise self.ScriptQuitCondition(
+                'Выход, продолжаем надеяться зарезервировать валюту по указанному ранее курсу, со времени создания ордера прошло %s секунд' % str(
+                    time_passed))
+
+    def create_reserve_order(self):
+        my_need_price = self.get_desired_reserve_price()
+        my_amount = self.calculate_desired_reserve_amount(my_need_price)
+        if my_amount >= self._currency_1_min_deal_size:
+            logging.info('%s %s %s', self.profit_order_type(), str(my_amount), str(my_need_price))
+            new_order = self._api.create_order(
+                currency_1=self._currency_1,
+                currency_2=self._currency_2,
+                quantity=my_amount,
+                price=my_need_price,
+                type=self.reserve_order_type()
+            )
+            logging.info(str(new_order))
+            logging.debug('Создан ордер на покупку %s', str(new_order['order_id']))
+
+        else:  # мы можем купить слишком мало на нашу сумму
+            raise self.ScriptQuitCondition('Выход, не хватает денег на создание ордера')
+
+    def create_profit_order(self, balances):
+        """
+                        Высчитываем курс для продажи.
+                        Нам надо продать всю валюту, которую купили, на сумму, за которую купили + немного навара и минус комиссия биржи
+                        При этом важный момент, что валюты у нас меньше, чем купили - бирже ушла комиссия
+                        0.00134345 1.5045
+                    """
+        quantity = self.calculate_profit_quantity(balances)
+        price = self.calculate_profit_price(quantity, balances)
+        logging.info('%s %s for %s', str(self.profit_order_type()), str(quantity), str(price),
+                     str(price))
+        new_order = self._api.create_order(
+            currency_1=self._currency_1,
+            currency_2=self._currency_2,
+            quantity=quantity,
+            price=price,
+            type=self.profit_order_type()
+        )
+        logging.info(str(new_order))
+        logging.debug('Создан ордер на доход %s', str(new_order['order_id']))
 
     def check_balance_for_reserve_order(self, balances):
         if self._profile == Profiles.UP:
