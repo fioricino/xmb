@@ -1,7 +1,7 @@
 from collections import Counter
 from decimal import Decimal
 
-import exmo
+from exmo_api import ExmoApi
 
 FEE = Decimal('0.002')
 
@@ -62,7 +62,7 @@ def calculate_profit(deals):
 
 
 if __name__ == '__main__':
-    deals = exmo.call_api('user_trades', pair='BTC_USD', offset=0, limit=10000)['BTC_USD']
+    deals = ExmoApi().get_trades('BTC', 'USD')
     if deals:
         c = calculate_profit(deals)
         print(c)

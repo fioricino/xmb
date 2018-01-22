@@ -24,8 +24,15 @@ class ExmoApi:
             logging.debug('Открытых ордеров нет')
             return []
 
-    def get_order_history(self, order_id):
-        return ExmoApi._call_api('order_trades', order_id=order_id)
+    def is_order_partially_completed(self, order_id):
+        try:
+            trades = ExmoApi._call_api('order_trades', order_id=order_id)
+        except ApiError as e:
+            if 'Error 50304' in str(e):
+                return False
+            else:
+                raise e
+        return True
 
     def cancel_order(self, order_id):
         return ExmoApi._call_api('order_cancel', order_id)
@@ -43,7 +50,7 @@ class ExmoApi:
         )
 
     def get_trades(self, currency_1, currency_2):
-        return ExmoApi._call_api('trades', pair=currency_1 + '_' + currency_2)
+        return ExmoApi._call_api('trades', pair=currency_1 + '_' + currency_2)[currency_1 + '_' + currency_2]
 
     @staticmethod
     def _call_api(api_method, http_method="POST", **kwargs):
