@@ -21,22 +21,22 @@ class TestWorker(unittest.TestCase):
         self.assertEqual(150, worker.get_avg_price())
 
     def test_get_desired_reserve_price_up(self):
-        worker = Worker(None, profile=Profiles.UP, stock_fee=0.05, reserve_profit_markup=0.15, currency_2_deal_size=400)
+        worker = Worker(None, profile=Profiles.UP, stock_fee=0.25, currency_2_deal_size=400)
         need_price = worker.calculate_desired_reserve_price(100)
         self.assertEqual(80, need_price)
 
     def test_get_desired_reserve_amount_up(self):
-        worker = Worker(None, profile=Profiles.UP, stock_fee=0.05, reserve_profit_markup=0.15, currency_2_deal_size=400)
+        worker = Worker(None, profile=Profiles.UP, stock_fee=0.05, currency_2_deal_size=400)
         amount = worker.calculate_desired_reserve_amount(80)
         self.assertEqual(5, amount)
 
     def test_get_desired_reserve_price_down(self):
-        worker = Worker(None, profile=Profiles.DOWN, stock_fee=0.05, reserve_profit_markup=0.15, currency_1_deal_size=5)
+        worker = Worker(None, profile=Profiles.DOWN, stock_fee=0.2, currency_1_deal_size=5)
         need_price = worker.calculate_desired_reserve_price(100)
-        self.assertEqual(120, need_price)
+        self.assertEqual(125, need_price)
 
     def test_get_desired_reserve_amount_down(self):
-        worker = Worker(None, profile=Profiles.DOWN, stock_fee=0.05, reserve_profit_markup=0.15, currency_1_deal_size=5)
+        worker = Worker(None, profile=Profiles.DOWN, stock_fee=0.05, currency_1_deal_size=5)
         amount = worker.calculate_desired_reserve_amount(120)
         self.assertEqual(5, amount)
 
@@ -387,7 +387,7 @@ class TestWorker(unittest.TestCase):
 
             def get_balances(self):
                 self.get_balances_called += 1
-                return {'BTC': '0', 'USD': '220'}
+                return {'BTC': '0', 'USD': '250'}
 
             def create_order(self, currency_1, currency_2, quantity, price, type):
                 if currency_1 == 'BTC' and currency_2 == 'USD' and quantity == 5 and price == 40 and type == 'buy':
@@ -399,8 +399,7 @@ class TestWorker(unittest.TestCase):
         def get_avg_price():
             return 50
 
-        worker = Worker(api, profile=Profiles.UP, currency_1_deal_size=5, currency_2_deal_size=200, stock_fee=0.1,
-                        reserve_profit_markup=0.1)
+        worker = Worker(api, profile=Profiles.UP, currency_1_deal_size=5, currency_2_deal_size=200, stock_fee=0.25)
         worker.get_avg_price = get_avg_price
         worker.main_flow()
 
@@ -426,7 +425,7 @@ class TestWorker(unittest.TestCase):
                 return {'BTC': '6', 'USD': '0'}
 
             def create_order(self, currency_1, currency_2, quantity, price, type):
-                if currency_1 == 'BTC' and currency_2 == 'USD' and quantity == 5 and price == 60 and type == 'sell':
+                if currency_1 == 'BTC' and currency_2 == 'USD' and quantity == 5 and price == 62.5 and type == 'sell':
                     self.create_order_called += 1
                     return {'order_id': 122}
 
@@ -435,7 +434,7 @@ class TestWorker(unittest.TestCase):
         def get_avg_price():
             return 50
 
-        worker = Worker(api, profile=Profiles.DOWN, currency_1_deal_size=5, stock_fee=0.1, reserve_profit_markup=0.1)
+        worker = Worker(api, profile=Profiles.DOWN, currency_1_deal_size=5, stock_fee=0.2)
         worker.get_avg_price = get_avg_price
         worker.main_flow()
 
@@ -461,7 +460,7 @@ class TestWorker(unittest.TestCase):
                 return {'BTC': '4', 'USD': '0'}
 
             def create_order(self, currency_1, currency_2, quantity, price, type):
-                if currency_1 == 'BTC' and currency_2 == 'USD' and quantity == 4 and price == 60 and type == 'sell':
+                if currency_1 == 'BTC' and currency_2 == 'USD' and quantity == 4 and price == 62.5 and type == 'sell':
                     self.create_order_called += 1
                     return {'order_id': 122}
 

@@ -27,7 +27,6 @@ if __name__ == '__main__':
                     reserve_price_distribution=RESERVE_PRICE_DISTRIBUTION,
                     currency_1_deal_size=CURRENCY_1_DEAL_SIZE,
                     currency_2_deal_size=CURRENCY_2_DEAL_SIZE,
-                    reserve_profit_markup=RESERVE_PROFIT_MARKUP,
                     spend_profit_markup=SPEND_PROFIT_MARKUP)
     t = Thread(target=worker.run)
     t.run()

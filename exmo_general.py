@@ -20,7 +20,6 @@ class Worker:
                  order_life_time=60,
                  avg_price_period=900,
                  stock_fee=0.002,
-                 reserve_profit_markup=0.001,
                  spend_profit_markup=0.001,
                  reserve_price_distribution=0.001,
                  currency_1_deal_size=0.001,
@@ -38,7 +37,6 @@ class Worker:
         self._order_life_time = order_life_time
         self._avg_price_period = avg_price_period
         self._stock_fee = stock_fee
-        self._reserve_profit_markup = reserve_profit_markup
         self._spend_profit_markup = spend_profit_markup
         self._reserve_price_distribution = reserve_price_distribution
         self._currency_1_deal_size = currency_1_deal_size
@@ -216,10 +214,10 @@ class Worker:
     def calculate_desired_reserve_price(self, avg_price):
         if self._profile == Profiles.UP:
             # хотим купить подешевле
-            return avg_price - avg_price * (self._stock_fee + self._reserve_profit_markup)
+            return avg_price / (1 + self._stock_fee)
         if self._profile == Profiles.DOWN:
             # хотим продать подороже
-            return avg_price + avg_price * (self._stock_fee + self._reserve_profit_markup)
+            return avg_price / (1 - self._stock_fee)
 
     def get_avg_price(self):
         # Узнать среднюю цену за AVG_PRICE_PERIOD, по которой продают CURRENCY_1
@@ -258,8 +256,8 @@ class Worker:
 
     def calculate_profit_price(self, quantity, balances):
         if self._profile == Profiles.UP:
-            return (self._currency_2_deal_size + self._currency_2_deal_size * (
-            self._stock_fee + self._spend_profit_markup)) / quantity
+            return (self._currency_2_deal_size / (1 -
+                                                  self._stock_fee - self._spend_profit_markup)) / quantity
         elif self._profile == Profiles.DOWN:
             return float(balances[self._currency_2]) / quantity
         raise ValueError
