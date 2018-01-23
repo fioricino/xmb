@@ -5,14 +5,16 @@ import os.path
 
 
 class JsonStorage:
-    def __init__(self):
-        self.orders = {}
+    def __init__(self, order_file='', archive_folder=''):
+        self.orders = self.load_orders_from_disk()
+        self._order_file = order_file
+        self._archive_folder = archive_folder
 
     def delete(self, order_id, status):
         logging.debug('Archive order %s with status %s', order_id, status)
         order_to_store = self.orders[order_id]
         order_to_store['status'] = status
-        self.save_to_disk(order_to_store, os.path.join('archive', order_id + 'json'))
+        self.save_to_disk(order_to_store, os.path.join(self._archive_folder, order_id + 'json'))
         self.orders.pop(order_id)
 
     def cancel_order(self, order_id):
@@ -39,7 +41,18 @@ class JsonStorage:
         self.save_orders()
 
     def save_orders(self):
-        self.save_to_disk(self.orders, os.path.join('data', 'orders.json'))
+        self.save_to_disk(self.orders, self._order_file)
 
     def save_to_disk(self, obj, path):
-        json.dump(obj, path)
+        try:
+            with open(path, 'w') as f:
+                json.dump(obj, f)
+        except:
+            pass
+
+    def load_orders_from_disk(self):
+        try:
+            with open(self._order_file, 'r') as f:
+                return json.load(f)
+        except:
+            return {}

@@ -1,3 +1,5 @@
+import logging
+import os
 from threading import Thread
 
 from exmo_api import ExmoApi
@@ -18,8 +20,9 @@ RESERVE_PRICE_DISTRIBUTION = 0.001
 PROFIT_MARKUP = 0.001
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
     exmo_api = ExmoApi()
-    storage = JsonStorage()
+    storage = JsonStorage(order_file=os.path.join('data', 'orders.json'), archive_folder='archive')
     worker = Worker(exmo_api,
                     storage,
                     period=PERIOD,
