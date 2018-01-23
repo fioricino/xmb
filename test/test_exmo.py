@@ -610,6 +610,7 @@ class TestWorker(unittest.TestCase):
         self.assertEquals('UP', storage.orders[new_order_id]['profile'])
         self.assertEquals('PROFIT', storage.orders[new_order_id]['order_type'])
         self.assertEquals('OPEN', storage.orders[new_order_id]['status'])
+        self.assertEqual(base_order, storage.orders[new_order_id]['base_order'])
 
     def test_main_flow_create_profit_order_down(self):
         # Проверяем создание ордера на резерв
@@ -663,6 +664,7 @@ class TestWorker(unittest.TestCase):
         self.assertEquals('DOWN', storage.orders[new_order_id]['profile'])
         self.assertEquals('PROFIT', storage.orders[new_order_id]['order_type'])
         self.assertEquals('OPEN', storage.orders[new_order_id]['status'])
+        self.assertEqual(base_order, storage.orders[new_order_id]['base_order'])
 
     def test_main_flow_profit_order_completed_up(self):
         # Проверяем, что процесс выходит, если есть не истекший ордер на запас

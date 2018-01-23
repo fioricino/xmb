@@ -184,7 +184,7 @@ class Worker:
         )
         open_orders = self._api.get_open_orders(self._currency_1, self._currency_2)
         new_order = next(order for order in open_orders if order['order_id'] == new_order_id)
-        self._storage.create_order(new_order, self._profile, 'PROFIT')
+        self._storage.create_order(new_order, self._profile, 'PROFIT', base_order)
         self._storage.update_order_status(base_order['order_id'], 'PROFIT_ORDER_CREATED')
         logging.info(str(new_order))
         logging.debug('Создан ордер на доход %s', str(new_order['order_id']))
