@@ -30,7 +30,7 @@ class TrendAnalyzer:
         deals_df = pd.DataFrame([p for p in deals])
         # TODO calculate with amount
         mean_price = deals_df.mean()
-        normalized_prce_func = deals_df / mean_price
+        normalized_prce_func = deals_df - mean_price
         rolling_mean_price_func = normalized_prce_func.rolling(self._rolling_window).mean()[0]
         derivative_func = [sp.derivative(lambda x: rolling_mean_price_func[x], i) for i in range(1, len(deals) - 1)]
         rolling_mean_derivative_func = pd.DataFrame(derivative_func).rolling(self._rolling_window).mean()
