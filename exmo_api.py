@@ -9,8 +9,8 @@ import urllib.parse
 
 from exceptions import ApiError
 
-API_KEY = ''
-API_SECRET = b''
+API_KEY = 'K-0adad660e6aca39f90d3544d3ca07d566ca8054a'
+API_SECRET = b'S-fb8de5372bb6543fa609283b49c5b398fa4c2e59'
 
 API_URL = 'api.exmo.me'
 API_VERSION = 'v1'

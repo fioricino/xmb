@@ -51,7 +51,7 @@ class TestExmoLong(unittest.TestCase):
         initial_usd_balance = 100
         api = InstantApi(btc_balance=0, usd_balance=initial_usd_balance, stock_fee=0.1, trades=None)
         worker = Worker(api, profile=Profiles.UP, stock_fee=0.1,
-                        spend_profit_markup=0.1, currency_2_deal_size=100, currency_1_min_deal_size=1)
+                        profit_markup=0.1, currency_2_deal_size=100, currency_1_min_deal_size=1)
         current_price = 10
 
         def get_avg_price():
@@ -70,7 +70,7 @@ class TestExmoLong(unittest.TestCase):
         initial_btc_balance = 10
         api = InstantApi(btc_balance=initial_btc_balance, usd_balance=0, stock_fee=0.1, trades=None)
         worker = Worker(api, profile=Profiles.DOWN, stock_fee=0.1,
-                        spend_profit_markup=0.1, currency_1_deal_size=10, currency_1_min_deal_size=1)
+                        profit_markup=0.1, currency_1_deal_size=10, currency_1_min_deal_size=1)
         current_price = 100
 
         def get_avg_price():
@@ -89,7 +89,7 @@ class TestExmoLong(unittest.TestCase):
         initial_usd_balance = 100
         api = InstantApi(btc_balance=0, usd_balance=initial_usd_balance, stock_fee=0.002, trades=None)
         worker = Worker(api, profile=Profiles.UP, stock_fee=0.002,
-                        spend_profit_markup=0.001, currency_2_deal_size=100, currency_1_min_deal_size=0.001)
+                        profit_markup=0.001, currency_2_deal_size=100, currency_1_min_deal_size=0.001)
         current_price = 10000
 
         def get_avg_price():
@@ -108,7 +108,7 @@ class TestExmoLong(unittest.TestCase):
         initial_btc_balance = 0.01
         api = InstantApi(btc_balance=initial_btc_balance, usd_balance=0, stock_fee=0.002, trades=None)
         worker = Worker(api, profile=Profiles.DOWN, stock_fee=0.002,
-                        spend_profit_markup=0.001, currency_1_deal_size=0.01, currency_1_min_deal_size=0.001)
+                        profit_markup=0.001, currency_1_deal_size=0.01, currency_1_min_deal_size=0.001)
         current_price = 15000
 
         def get_avg_price():

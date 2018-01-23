@@ -21,7 +21,7 @@ class Worker:
                  order_life_time=60,
                  avg_price_period=900,
                  stock_fee=0.002,
-                 spend_profit_markup=0.001,
+                 profit_markup=0.001,
                  reserve_price_distribution=0.001,
                  currency_1_deal_size=0.001,
                  stock_time_offset=0
@@ -37,7 +37,7 @@ class Worker:
         self._order_life_time = order_life_time
         self._avg_price_period = avg_price_period
         self._stock_fee = stock_fee
-        self._spend_profit_markup = spend_profit_markup
+        self._profit_markup = profit_markup
         self._reserve_price_distribution = reserve_price_distribution
         self._currency_1_deal_size = currency_1_deal_size
         # self._currency_2_deal_size = currency_2_deal_size
@@ -45,7 +45,6 @@ class Worker:
     def run(self):
         self._interrupted = False
         # Синхронизируем базу с биржей
-        self.synchronize()
         while not self._interrupted:
             try:
                 self.main_flow()
@@ -279,7 +278,7 @@ class Worker:
             return amount_in_order * (1 - self._stock_fee)
         elif self._profile == Profiles.DOWN:
             # Комиссия была в долларах
-            return amount_in_order * (1 + self._spend_profit_markup) / (1 - self._stock_fee)
+            return amount_in_order * (1 + self._profit_markup) / (1 - self._stock_fee)
         raise ValueError
 
     def calculate_profit_price(self, quantity, base_order):
@@ -288,7 +287,7 @@ class Worker:
         if self._profile == Profiles.UP:
             # Комиссия была снята в 1 валюте, считаем от цены ордера
             return (
-            amount_in_order * price_in_order * (1 + self._spend_profit_markup) / ((1 - self._stock_fee) * quantity))
+                amount_in_order * price_in_order * (1 + self._profit_markup) / ((1 - self._stock_fee) * quantity))
         if self._profile == Profiles.DOWN:
             return (amount_in_order * price_in_order * (1 - self._stock_fee)) / quantity
         raise ValueError

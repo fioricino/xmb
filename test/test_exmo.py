@@ -587,7 +587,7 @@ class TestWorker(unittest.TestCase):
                 self.test.assertEqual(expected_quantity, quantity)
                 self.test.assertEqual(expected_price, price)
                 self.test.assertEqual(expected_order_type, type)
-                    self.create_order_called += 1
+                self.create_order_called += 1
                 self.orders.append(expected_order)
                 return new_order_id
 
@@ -599,7 +599,7 @@ class TestWorker(unittest.TestCase):
         storage.orders[base_order_id] = stored_order
 
         worker = Worker(api, storage, profile=Profiles.UP, stock_fee=0.2,
-                        spend_profit_markup=0.2)
+                        profit_markup=0.2)
         worker.main_flow()
 
         self.assertEqual(2, api.get_open_orders_called)
@@ -639,7 +639,7 @@ class TestWorker(unittest.TestCase):
                 self.test.assertEqual(expected_quantity, quantity)
                 self.test.assertAlmostEqual(expected_price, price, 4)
                 self.test.assertEqual(expected_order_type, type)
-                    self.create_order_called += 1
+                self.create_order_called += 1
                 self.orders.append(expected_order)
                 return new_order_id
 
@@ -652,7 +652,7 @@ class TestWorker(unittest.TestCase):
         storage.orders[base_order_id] = stored_order
 
         worker = Worker(api, storage, profile=Profiles.DOWN, stock_fee=0.2,
-                        spend_profit_markup=0.2)
+                        profit_markup=0.2)
         worker.main_flow()
 
         self.assertEqual(2, api.get_open_orders_called)
