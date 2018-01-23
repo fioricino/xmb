@@ -13,6 +13,7 @@ class Profiles(Enum):
 
 class Worker:
     def __init__(self, api,
+                 storage,
                  profile,
                  period=1,
                  currency_1='BTC',
@@ -23,11 +24,10 @@ class Worker:
                  spend_profit_markup=0.001,
                  reserve_price_distribution=0.001,
                  currency_1_deal_size=0.001,
-                 currency_2_deal_size=15,
-                 currency_1_min_deal_size=0.001,
                  stock_time_offset=0
                  ):
         self._api = api
+        self._storage = storage
         self._period = period
         self._interrupted = False
         self._currency_1 = currency_1
@@ -40,11 +40,12 @@ class Worker:
         self._spend_profit_markup = spend_profit_markup
         self._reserve_price_distribution = reserve_price_distribution
         self._currency_1_deal_size = currency_1_deal_size
-        self._currency_2_deal_size = currency_2_deal_size
-        self._currency_1_min_deal_size = currency_1_min_deal_size
+        # self._currency_2_deal_size = currency_2_deal_size
 
     def run(self):
         self._interrupted = False
+        # Синхронизируем базу с биржей
+        self.synchronize()
         while not self._interrupted:
             try:
                 self.main_flow()
@@ -65,46 +66,65 @@ class Worker:
 
     def main_flow(self):
         # Получаем список активных ордеров
-        opened_orders = self._api.get_open_orders(self._currency_1, self._currency_2)
+        opened_orders = [order for order in self._storage.get_open_orders() if order['profile'] == self._profile.name]
+        market_open_orders = [order['order_id'] for order in
+                              self._api.get_open_orders(self._currency_1, self._currency_2)]
 
         reserve_orders = []
         # Есть ли неисполненные ордера на доход (продажа CURRENCY_1 для повышения, покупка CURRENCY_1 для понижения)?
         for order in opened_orders:
-            if order['type'] == self.profit_order_type():
+            if order['order_type'] == 'PROFIT':
                 # Есть неисполненные ордера на доход, выход
-                raise self.ScriptQuitCondition(
-                    'Выход, ждем пока не исполнятся/закроются все ордера типа {} (один ордер может быть разбит биржей на несколько и исполняться частями)'.format(
-                        self.profit_order_type()))
-            else:
+                # Ордер еще не закрыт?
+                if order['order_data']['order_id'] in market_open_orders:
+                    raise self.ScriptQuitCondition(
+                        'Выход, ждем пока не закроется ордер на доход {}:'.format(order['order_data']['order_id']))
+                else:
+                    # Ордер выполнен, обновляем хранилище
+                    self._storage.delete(order['order_data']['order_id'], 'COMPLETED')
+                    self._storage.delete(order['base_order']['order_id'], 'COMPLETED')
+                    raise self.ScriptQuitCondition(
+                        'Выход, закрыли ордера на доход'.format(order['order_data']['order_id']))
+            if order['status'] == 'OPEN':
                 # Запоминаем ордера на запас
                 reserve_orders.append(order)
 
         # Проверяем, есть ли открытые ордера на запас (покупку CURRENCY_1 для повышения, продажа для понижения)
         if reserve_orders:  # открытые ордера есть
-            for order in reserve_orders:
+            for order_data in reserve_orders:
+                order = order_data['order_data']
                 # Проверяем, есть ли частично исполненные
-                logging.debug('Проверяем, что происходит с отложенным ордером %s', str(order['order_id']))
-                is_order_partially_completed = self._api.is_order_partially_completed(order['order_id'])
-                if is_order_partially_completed:
-                    # по ордеру уже есть частичное выполнение, выход
-                    raise self.ScriptQuitCondition(
-                        'Выход, продолжаем надеяться запасти валюту по тому курсу, по которому уже запасли часть')
-                else:
-                    logging.debug('Частично исполненных ордеров нет')
+                logging.debug('Проверяем, что происходит с ордером на резерв %s', str(order['order_id']))
+                # Ордер еще открыт?
+                if order['order_id'] in market_open_orders:
+                    is_order_partially_completed = self._api.is_order_partially_completed(order['order_id'])
+                    if is_order_partially_completed:
+                        # по ордеру уже есть частичное выполнение, выход
+                        raise self.ScriptQuitCondition(
+                            'Выход, продолжаем надеяться запасти валюту по тому курсу, по которому уже запасли часть')
+                    else:
+                        logging.debug('Частично исполненных ордеров нет')
 
-                    self.check_reserve_order(order)
+                        self.check_reserve_order(order)
+                else:
+                    # Ордер выполнен, обновляем хранилище
+                    self._storage.update_order_status(order['order_id'], 'WAIT_FOR_PROFIT')
 
         else:  # Открытых ордеров нет
-            balances = self._api.get_balances()
-            if self.check_balance_for_profit_order(balances):  # Есть ли в наличии CURRENCY_1, которую можно продать?
-                self.create_profit_order(balances)
+            # Есть ли ожидающие ордера на резерв?
+            orders_waiting_for_profit = [order['order_data'] for order in opened_orders
+                                         if order['status'] == 'WAIT_FOR_PROFIT']
+            if orders_waiting_for_profit:
+                # if self.check_balance_for_profit_order(balances):  # Есть ли в наличии CURRENCY_1, которую можно продать?
+                for order in orders_waiting_for_profit:
+                    self.create_profit_order(order)
             else:
                 # CURRENCY_1 нет, надо докупить
                 # Достаточно ли денег на балансе в валюте CURRENCY_2 (Баланс >= CAN_SPEND)
-                if self.check_balance_for_reserve_order(balances):
-                    self.create_reserve_order()
-                else:
-                    raise self.ScriptQuitCondition('Выход, не хватает денег')
+                # if self.check_balance_for_reserve_order(balances):
+                self.create_reserve_order()
+                # else:
+                #     raise self.ScriptQuitCondition('Выход, не хватает денег')
 
     def check_reserve_order(self, order):
         time_passed = time.time() + self._stock_time_offset * 60 * 60 - int(order['created'])
@@ -114,6 +134,7 @@ class Worker:
                     order['price']) * self._reserve_price_distribution:
                 # Ордер уже давно висит, никому не нужен, отменяем
                 self._api.cancel_order(order['order_id'])
+                self._storage.delete(order['order_id'], 'CANCELED')
                 raise self.ScriptQuitCondition(
                     'Отменяем ордер -за ' + str(time_passed) + ' секунд не удалось зарезервировать ')
             else:
@@ -127,40 +148,45 @@ class Worker:
 
     def create_reserve_order(self):
         my_need_price = self.get_desired_reserve_price()
-        my_amount = self.calculate_desired_reserve_amount(my_need_price)
-        if my_amount >= self._currency_1_min_deal_size:
-            logging.info('%s %s %s', self.profit_order_type(), str(my_amount), str(my_need_price))
-            new_order = self._api.create_order(
-                currency_1=self._currency_1,
-                currency_2=self._currency_2,
-                quantity=my_amount,
-                price=my_need_price,
-                type=self.reserve_order_type()
-            )
-            logging.info(str(new_order))
-            logging.debug('Создан ордер на покупку %s', str(new_order['order_id']))
+        my_amount = self.calculate_desired_reserve_amount()
+        logging.info('%s %s %s', self.profit_order_type(), str(my_amount), str(my_need_price))
+        new_order_id = self._api.create_order(
+            currency_1=self._currency_1,
+            currency_2=self._currency_2,
+            quantity=my_amount,
+            price=my_need_price,
+            type=self.reserve_order_type()
+        )
+        open_orders = self._api.get_open_orders(self._currency_1, self._currency_2)
+        new_order = next(order for order in open_orders if order['order_id'] == new_order_id)
+        self._storage.create_order(new_order, self._profile, 'RESERVE')
+        logging.info(str(new_order))
+        logging.debug('Создан ордер на покупку %s', str(new_order['order_id']))
 
-        else:  # мы можем купить слишком мало на нашу сумму
-            raise self.ScriptQuitCondition('Выход, не хватает денег на создание ордера')
-
-    def create_profit_order(self, balances):
+    def create_profit_order(self, base_order):
         """
                         Высчитываем курс для продажи.
                         Нам надо продать всю валюту, которую купили, на сумму, за которую купили + немного навара и минус комиссия биржи
                         При этом важный момент, что валюты у нас меньше, чем купили - бирже ушла комиссия
                         0.00134345 1.5045
                     """
-        quantity = self.calculate_profit_quantity(balances)
-        price = self.calculate_profit_price(quantity, balances)
+        # balances = self._api.get_balances()
+        quantity = self.calculate_profit_quantity(base_order)
+
+        price = self.calculate_profit_price(quantity, base_order)
         logging.info('%s %s for %s', str(self.profit_order_type()), str(quantity), str(price),
                      str(price))
-        new_order = self._api.create_order(
+        new_order_id = self._api.create_order(
             currency_1=self._currency_1,
             currency_2=self._currency_2,
             quantity=quantity,
             price=price,
             type=self.profit_order_type()
         )
+        open_orders = self._api.get_open_orders(self._currency_1, self._currency_2)
+        new_order = next(order for order in open_orders if order['order_id'] == new_order_id)
+        self._storage.create_order(new_order, self._profile, 'PROFIT')
+        self._storage.update_order_status(base_order['order_id'], 'PROFIT_ORDER_CREATED')
         logging.info(str(new_order))
         logging.debug('Создан ордер на доход %s', str(new_order['order_id']))
 
@@ -205,9 +231,9 @@ class Worker:
         # туду вынести наружу
         return my_need_price
 
-    def calculate_desired_reserve_amount(self, my_need_price):
+    def calculate_desired_reserve_amount(self):
         if self._profile == Profiles.UP:
-            return self._currency_2_deal_size / my_need_price
+            return self._currency_1_deal_size / (1 - self._stock_fee)
         elif self._profile == Profiles.DOWN:
             return self._currency_1_deal_size
 
@@ -246,18 +272,23 @@ class Worker:
         avg_price = amount / quantity
         return avg_price
 
-    def calculate_profit_quantity(self, balances):
+    def calculate_profit_quantity(self, base_order):
+        amount_in_order = float(base_order['quantity'])
         if self._profile == Profiles.UP:
-            return float(balances[self._currency_1])
+            # Учитываем комиссию
+            return amount_in_order * (1 - self._stock_fee)
         elif self._profile == Profiles.DOWN:
-            return self._currency_1_deal_size + self._currency_1_deal_size * (
-            self._stock_fee + self._spend_profit_markup)
+            # Комиссия была в долларах
+            return amount_in_order * (1 + self._spend_profit_markup) / (1 - self._stock_fee)
         raise ValueError
 
-    def calculate_profit_price(self, quantity, balances):
+    def calculate_profit_price(self, quantity, base_order):
+        price_in_order = float(base_order['price'])
+        amount_in_order = float(base_order['quantity'])
         if self._profile == Profiles.UP:
-            return (self._currency_2_deal_size / (1 -
-                                                  self._stock_fee - self._spend_profit_markup)) / quantity
-        elif self._profile == Profiles.DOWN:
-            return float(balances[self._currency_2]) / quantity
+            # Комиссия была снята в 1 валюте, считаем от цены ордера
+            return (
+            amount_in_order * price_in_order * (1 + self._spend_profit_markup) / ((1 - self._stock_fee) * quantity))
+        if self._profile == Profiles.DOWN:
+            return (amount_in_order * price_in_order * (1 - self._stock_fee)) / quantity
         raise ValueError
