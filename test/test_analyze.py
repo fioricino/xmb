@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import random
 
-from exmo_general import Profiles
 from trend_analyze import TrendAnalyzer
 
 import warnings
@@ -20,7 +19,7 @@ class TestAnalyze(unittest.TestCase):
         ta._current_time = lambda: 20
         profile, profit_markup, mean_price = ta.get_profile([{'date': str(i), 'trade_id': str(i),
                                                   'price': str(1200 + 10 * i)} for i in range(20)])
-        self.assertEqual(Profiles.UP, profile)
+        self.assertEqual('UP', profile)
         self.assertGreater(profit_markup, 0)
 
     def test_switching_linear_neg(self):
@@ -30,7 +29,7 @@ class TestAnalyze(unittest.TestCase):
         ta._current_time = lambda: 20
         profile, profit_markup, mean_price = ta.get_profile(
             deals)
-        self.assertEqual(Profiles.DOWN, profile)
+        self.assertEqual('DOWN', profile)
         self.assertGreater(profit_markup, 0)
 
     def test_switching_linear_neg_interpolation(self):
@@ -39,7 +38,7 @@ class TestAnalyze(unittest.TestCase):
         profile, profit_markup, mean_price = ta.get_profile(
             [{'date': str(i), 'trade_id': str(i), 'price': str(1200 - 10 * i)} for i in
              [1, 2, 3, 3, 5, 8, 9, 10, 10, 12, 14, 15, 15, 17, 18, 21, 22, 23]])
-        self.assertEqual(Profiles.DOWN, profile)
+        self.assertEqual('DOWN', profile)
         self.assertGreater(profit_markup, 0)
 
     def test_switching_linear_neg_interpolation_shuffled(self):
@@ -50,7 +49,7 @@ class TestAnalyze(unittest.TestCase):
         random.shuffle(deals)
         profile, profit_markup, mean_price = ta.get_profile(
             deals)
-        self.assertEqual(Profiles.DOWN, profile)
+        self.assertEqual('DOWN', profile)
         self.assertGreater(profit_markup, 0)
 
     def test_switching_sinus(self):
@@ -78,9 +77,9 @@ class TestAnalyze(unittest.TestCase):
             logging.debug('{} {}'.format(profile, profit_markup))
             last_price = int(all_prices[last_index]['date'])
             if last_price in range(19, 37) or last_price in range(105, 159) or last_price in range(230, 250):
-                self.assertEqual(Profiles.UP, profile)
+                self.assertEqual('UP', profile)
             elif last_price in range(42, 98) or last_price in range(166, 226):
-                self.assertEqual(Profiles.DOWN, profile)
+                self.assertEqual('DOWN', profile)
 
     def test_switching_sinus_interpolation(self):
         # see graph in PriceData.ipynb
@@ -106,10 +105,10 @@ class TestAnalyze(unittest.TestCase):
             profile, profit_markup, mean_price = ta.get_profile(prices)
             logging.debug('{} {}'.format(profile, profit_markup))
             last_price = int(all_prices[last_index]['date'])
-            if last_price in range(19, 37) or last_price in range(110, 159) or last_price in range(236, 250):
-                self.assertEqual(Profiles.UP, profile)
+            if last_price in range(19, 37) or last_price in range(110, 159) or last_price in range(237, 250):
+                self.assertEqual('UP', profile)
             elif last_price in range(42, 98) or last_price in range(172, 226):
-                self.assertEqual(Profiles.DOWN, profile)
+                self.assertEqual('DOWN', profile)
 
 
 if __name__ == '__main__':

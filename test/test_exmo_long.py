@@ -1,6 +1,6 @@
 import unittest
 
-from exmo_general import Worker, Profiles
+from exmo_general import Worker
 from json_api import JsonStorage
 
 
@@ -71,7 +71,7 @@ class TestExmoLong(unittest.TestCase):
     def test_up(self):
         initial_usd_balance = 100
         api = InstantApi(btc_balance=0, usd_balance=initial_usd_balance, stock_fee=0.1, trades=None)
-        worker = Worker(api, StorageMock(), profile=Profiles.UP, stock_fee=0.1,
+        worker = Worker(api, StorageMock(), profile='UP', stock_fee=0.1,
                         profit_markup=0.1)
         current_price = 10
 
@@ -93,7 +93,7 @@ class TestExmoLong(unittest.TestCase):
     def test_down(self):
         initial_btc_balance = 10
         api = InstantApi(btc_balance=initial_btc_balance, usd_balance=0, stock_fee=0.1, trades=None)
-        worker = Worker(api, StorageMock(), profile=Profiles.DOWN, stock_fee=0.1,
+        worker = Worker(api, StorageMock(), profile='DOWN', stock_fee=0.1,
                         profit_markup=0.1, currency_1_deal_size=10)
         current_price = 100
 
@@ -115,7 +115,7 @@ class TestExmoLong(unittest.TestCase):
     def test_up_natural(self):
         initial_usd_balance = 100
         api = InstantApi(btc_balance=0, usd_balance=initial_usd_balance, stock_fee=0.002, trades=None)
-        worker = Worker(api, StorageMock(), profile=Profiles.UP, stock_fee=0.002,
+        worker = Worker(api, StorageMock(), profile='UP', stock_fee=0.002,
                         profit_markup=0.001)
         current_price = 10000
 
@@ -137,7 +137,7 @@ class TestExmoLong(unittest.TestCase):
     def test_down_natural(self):
         initial_btc_balance = 0.01
         api = InstantApi(btc_balance=initial_btc_balance, usd_balance=0, stock_fee=0.002, trades=None)
-        worker = Worker(api, StorageMock(), profile=Profiles.DOWN, stock_fee=0.002,
+        worker = Worker(api, StorageMock(), profile='DOWN', stock_fee=0.002,
                         profit_markup=0.001, currency_1_deal_size=0.01)
         current_price = 15000
 

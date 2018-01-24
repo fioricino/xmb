@@ -6,8 +6,6 @@ import numpy as np
 import pandas as pd
 import scipy.misc as sp
 
-from exmo_general import Profiles
-
 
 class TrendAnalyzer:
     def __init__(self, rolling_window, profit_multiplier, mean_price_period, price_period,
@@ -70,9 +68,9 @@ class TrendAnalyzer:
         ))
 
         if last_derivative >= 0:
-            return Profiles.UP, profit_markup, mean_price
+            return 'UP', profit_markup, mean_price
         if last_derivative < 0:
-            return Profiles.DOWN, profit_markup, mean_price
+            return 'DOWN', profit_markup, mean_price
 
     def _calculate_mean_price(self, deals, mean_price_period):
         prices = []

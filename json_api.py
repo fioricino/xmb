@@ -30,8 +30,9 @@ class JsonStorage:
 
     def create_order(self, order, profile, order_type, base_order=None):
         order_to_store = {
+            'order_id': order['order_id'],
             'order_data': order,
-            'profile': profile.name,
+            'profile': profile,
             'order_type': order_type,
             'status': 'OPEN',
             'base_order': base_order
@@ -39,6 +40,7 @@ class JsonStorage:
         logging.debug('Save order: %s', order_to_store)
         self.orders[order['order_id']] = order_to_store
         self.save_orders()
+        return order_to_store
 
     def save_orders(self):
         self.save_to_disk(self.orders, self._order_file)

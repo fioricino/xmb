@@ -21,14 +21,13 @@ class ExmoApi:
         try:
             return ExmoApi._call_api('user_open_orders')[currency_1 + '_' + currency_2]
         except KeyError:
-            logging.debug('Открытых ордеров нет')
+            logging.debug('No open market orders')
             return []
 
     def get_canceled_orders(self, currency_1, currency_2):
         try:
             return ExmoApi._call_api('user_cancelled_orders')[currency_1 + '_' + currency_2]
         except KeyError:
-            logging.debug('Отмененных ордеров нет')
             return []
 
     def is_order_partially_completed(self, order_id):
@@ -42,14 +41,14 @@ class ExmoApi:
         return True
 
     def cancel_order(self, order_id):
-        logging.debug('Cancel order %s', order_id)
+        logging.info('Cancel order %s', order_id)
         return ExmoApi._call_api('order_cancel', order_id)
 
     def get_balances(self):
         return ExmoApi._call_api('user_info')['balances']
 
     def create_order(self, currency_1, currency_2, quantity, price, type):
-        logging.debug('Create %s order (quantity=%s, price=%s)', type, quantity, price)
+        logging.info('Create %s order (quantity=%s, price=%s)', type, quantity, price)
         return ExmoApi._call_api(
             'order_create',
             pair=currency_1 + '_' + currency_2,
