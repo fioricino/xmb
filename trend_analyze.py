@@ -10,7 +10,7 @@ from exmo_general import Profiles
 
 
 class TrendAnalyzer:
-    def __init__(self, rolling_window, profit_multiplier, price_period,
+    def __init__(self, rolling_window, profit_multiplier, mean_price_period, price_period,
                  interpolation_degree=20,
                  currency_1='BTC', currency_2='USD',
                  stock_time_offset=0):
@@ -22,6 +22,7 @@ class TrendAnalyzer:
         # TODO change if derivative is large??
         self._price_period = price_period
         self.profit_multiplier = profit_multiplier
+        self._mean_price_period = mean_price_period
 
     def _get_prices_for_period(self, deals):
         c = defaultdict(list)
@@ -36,7 +37,7 @@ class TrendAnalyzer:
     def _get_derivative_func(self, deals):
         # TODO make function(time)!!!
         deals_df = pd.DataFrame([p for p in deals])
-        price_func = self.get_interpolated_func([d for d in deals_df['time']], [p for p in deals_df['price']])
+        price_func = self._get_interpolated_func([d for d in deals_df['time']], [p for p in deals_df['price']])
         mean_price = price_func.mean()
         normalized_prce_func = price_func / mean_price
         # TODO calculate with amount
@@ -47,7 +48,7 @@ class TrendAnalyzer:
         rolling_mean_derivative_func = pd.DataFrame(derivative_func).rolling(self._rolling_window).mean()
         return rolling_mean_derivative_func[0]
 
-    def get_interpolated_func(self, x, y):
+    def _get_interpolated_func(self, x, y):
         polyfit = np.polyfit(x, y, self._interpolation_degree)
         poly1d = np.poly1d(polyfit)
         # generate point for each second
@@ -61,13 +62,28 @@ class TrendAnalyzer:
         index = -1
         last_derivative = derivative_func.iloc[index]
         if np.math.isnan(last_derivative):
-            return None, None
+            return None, None, None
         profit_markup = abs(self.profit_multiplier * last_derivative)
-        logging.debug('Deal time: {}. Deal id: {}. Last derivative: {}. Profit markup: {}.'.format(
-            time.ctime(int(trades[-1]['date'])), trades[-1]['trade_id'], last_derivative, profit_markup
+        mean_price = self._calculate_mean_price(trades, self._mean_price_period)
+        logging.debug('Deal time: {}\nDeal id: {}\nLast derivative: {}\nProfit markup: {}\nMean price: {}'.format(
+            time.ctime(int(trades[-1]['date'])), trades[-1]['trade_id'], last_derivative, profit_markup, mean_price
         ))
 
         if last_derivative >= 0:
-            return Profiles.UP, profit_markup
+            return Profiles.UP, profit_markup, mean_price
         if last_derivative < 0:
-            return Profiles.DOWN, profit_markup
+            return Profiles.DOWN, profit_markup, mean_price
+
+    def _calculate_mean_price(self, deals, mean_price_period):
+        prices = []
+        for deal in deals:
+            time_passed = self._current_time() + self._stock_time_offset * 60 * 60 - int(deal['date'])
+            if time_passed < mean_price_period:
+                prices.append(float(deal['price']))
+                if not prices:
+                    raise ValueError('Не удается вычислить среднюю цену')
+        avg_price = sum(prices) / len(prices)
+        return avg_price
+
+    def _current_time(self):
+        return time.time()

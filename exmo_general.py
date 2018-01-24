@@ -223,7 +223,8 @@ class Worker:
                                 На сумму CAN_SPEND за минусом STOCK_FEE, и с учетом PROFIT_MARKUP
                                 ( = ниже средней цены рынка, с учетом комиссии и желаемого профита)
                             """
-        # написать для прнижения!!!
+
+        # TODO взять из анализатора
         avg_price = self.get_avg_price()
         # купить/продать больше, потому что биржа потом заберет кусок
         my_need_price = self.calculate_desired_reserve_price(avg_price)
@@ -245,6 +246,7 @@ class Worker:
             return avg_price / (1 - self._stock_fee)
 
     def get_avg_price(self):
+        # Взять из анализатора!
         # Узнать среднюю цену за AVG_PRICE_PERIOD, по которой продают CURRENCY_1
         """
                                      Exmo не предоставляет такого метода в API, но предоставляет другие, к которым можно попробовать привязаться.
