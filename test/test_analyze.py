@@ -8,6 +8,10 @@ import pandas as pd
 from exmo_general import Profiles
 from trend_analyze import TrendAnalyzer
 
+import warnings
+
+warnings.simplefilter('ignore', np.RankWarning)
+
 
 class TestAnalyze(unittest.TestCase):
     def test_switching_linear_pos(self):
@@ -21,6 +25,14 @@ class TestAnalyze(unittest.TestCase):
         ta = TrendAnalyzer(rolling_window=6, profit_multiplier=0.5, price_period=None)
         profile, profit_markup = ta.get_profile(
             [{'date': str(i), 'trade_id': str(i), 'price': str(1200 - 10 * i)} for i in range(20)])
+        self.assertEqual(Profiles.DOWN, profile)
+        self.assertGreater(profit_markup, 0)
+
+    def test_switching_linear_neg_interpolation(self):
+        ta = TrendAnalyzer(rolling_window=6, profit_multiplier=0.5, price_period=None)
+        profile, profit_markup = ta.get_profile(
+            [{'date': str(i), 'trade_id': str(i), 'price': str(1200 - 10 * i)} for i in
+             [1, 2, 3, 5, 8, 9, 10, 12, 14, 15, 17, 18, 21, 22, 23]])
         self.assertEqual(Profiles.DOWN, profile)
         self.assertGreater(profit_markup, 0)
 
@@ -39,8 +51,8 @@ class TestAnalyze(unittest.TestCase):
         all_prices = [{'date': str(i), 'trade_id': str(i), 'price': str(p[0])} for i, p in
                       enumerate(randomized_price_func)]
 
-        for i in range(len(all_prices) - 20):
-            last_index = min(start_index + 20, len(all_prices) - 1)
+        for i in range(len(all_prices) - 100):
+            last_index = min(start_index + 100, len(all_prices) - 1)
             prices = all_prices[start_index:last_index]
             start_index += price_period
             profile, profit_markup = ta.get_profile(prices)
@@ -48,7 +60,7 @@ class TestAnalyze(unittest.TestCase):
             last_price = int(all_prices[last_index]['date'])
             if last_price in range(19, 37) or last_price in range(104, 159) or last_price in range(229, 250):
                 self.assertEqual(Profiles.UP, profile)
-            elif last_price in range(41, 98) or last_price in range(164, 226):
+            elif last_price in range(42, 98) or last_price in range(164, 226):
                 self.assertEqual(Profiles.DOWN, profile)
 
 
