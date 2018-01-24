@@ -1,5 +1,6 @@
 import logging
 import time
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
@@ -23,10 +24,14 @@ class TrendAnalyzer:
         self.profit_multiplier = profit_multiplier
 
     def _get_prices_for_period(self, deals):
-        sorted_deals = sorted([d for d in deals if
-                               self._price_period is None or time.time() + self._stock_time_offset * 60 * 60 - int(
-                                   d['date']) < self._price_period], key=lambda dl: int(dl['trade_id']))
-        return [{'price': float(d['price']), 'time': int(d['date'])} for d in sorted_deals]
+        c = defaultdict(list)
+        for deal in deals:
+            c[int(deal['date'])].append(float(deal['price']))
+        result = []
+        for time in sorted(c):
+            result.append({'time': time, 'price': np.mean(c[time])})
+
+        return result
 
     def _get_derivative_func(self, deals):
         # TODO make function(time)!!!
