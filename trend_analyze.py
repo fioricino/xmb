@@ -1,24 +1,26 @@
 import logging
 import time
+import warnings
 from collections import defaultdict
 
 import numpy as np
 import pandas as pd
 import scipy.misc as sp
 
+logger = logging.getLogger('xmb')
 
 class TrendAnalyzer:
-    def __init__(self, rolling_window, profit_multiplier, mean_price_period, price_period,
+    def __init__(self, rolling_window, profit_multiplier, mean_price_period,
                  interpolation_degree=20,
                  currency_1='BTC', currency_2='USD',
                  stock_time_offset=0):
+        warnings.simplefilter('ignore', np.RankWarning)
         self._interpolation_degree = interpolation_degree
         self._currency_1 = currency_1
         self._currency_2 = currency_2
         self._stock_time_offset = stock_time_offset
         self._rolling_window = rolling_window
         # TODO change if derivative is large??
-        self._price_period = price_period
         self.profit_multiplier = profit_multiplier
         self._mean_price_period = mean_price_period
 
@@ -63,7 +65,7 @@ class TrendAnalyzer:
             return None, None, None
         profit_markup = abs(self.profit_multiplier * last_derivative)
         mean_price = self._calculate_mean_price(trades, self._mean_price_period)
-        logging.debug('Deal time: {}\nDeal id: {}\nLast derivative: {}\nProfit markup: {}\nMean price: {}'.format(
+        logger.debug('Deal time: {}\nDeal id: {}\nLast derivative: {}\nProfit markup: {}\nMean price: {}'.format(
             time.ctime(int(trades[-1]['date'])), trades[-1]['trade_id'], last_derivative, profit_markup, mean_price
         ))
 

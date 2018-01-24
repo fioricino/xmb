@@ -15,13 +15,14 @@ API_SECRET = b'S-fb8de5372bb6543fa609283b49c5b398fa4c2e59'
 API_URL = 'api.exmo.me'
 API_VERSION = 'v1'
 
+logger = logging.getLogger('xmb')
 
 class ExmoApi:
     def get_open_orders(self, currency_1, currency_2):
         try:
             return ExmoApi._call_api('user_open_orders')[currency_1 + '_' + currency_2]
         except KeyError:
-            logging.debug('No open market orders')
+            logger.debug('No open market orders')
             return []
 
     def get_canceled_orders(self, currency_1, currency_2):
@@ -41,14 +42,14 @@ class ExmoApi:
         return True
 
     def cancel_order(self, order_id):
-        logging.info('Cancel order %s', order_id)
+        logger.info('Cancel order %s', order_id)
         return ExmoApi._call_api('order_cancel', order_id)
 
     def get_balances(self):
         return ExmoApi._call_api('user_info')['balances']
 
     def create_order(self, currency_1, currency_2, quantity, price, type):
-        logging.info('Create %s order (quantity=%s, price=%s)', type, quantity, price)
+        logger.info('Create %s order (quantity=%s, price=%s)', type, quantity, price)
         return ExmoApi._call_api(
             'order_create',
             pair=currency_1 + '_' + currency_2,

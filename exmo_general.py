@@ -4,6 +4,7 @@ import time
 
 from exceptions import ApiError
 
+logger = logging.getLogger('xmb')
 
 class Worker:
     def __init__(self, api,
@@ -47,9 +48,9 @@ class Worker:
                 self.main_flow()
                 time.sleep(self._period)
             except ApiError as e:
-                logging.exception('Merket api error')
+                logger.exception('Merket api error')
             except Exception as e:
-                logging.exception('Fatal exception')
+                logger.exception('Fatal exception')
 
     def stop(self):
         self._interrupted = True
@@ -73,7 +74,7 @@ class Worker:
             for order in open_orders:
                 self._handle_open_order(market_open_orders, order)
         except Exception as e:
-            logging.exception('Cannot handle open orders')
+            logger.exception('Cannot handle open orders')
 
     def _handle_open_order(self, market_open_orders, order):
         try:
@@ -86,7 +87,7 @@ class Worker:
                 # order completed
                 self._handle_completed_order(order)
         except Exception as e:
-            logging.exception('Cannot handle order: {}'.format(order['order_id']))
+            logger.exception('Cannot handle order: {}'.format(order['order_id']))
 
     def _handle_completed_order(self, order):
         if order['order_type'] == 'PROFIT':
@@ -96,43 +97,43 @@ class Worker:
             self._handle_completed_reserve_order(order)
 
     def _handle_completed_profit_order(self, order):
-        logging.debug('Profit order {} completed'.format(order['order_id']))
+        logger.info('Profit order {} completed'.format(order['order_id']))
         self._storage.delete(order['order_id'], 'COMPLETED')
         self._storage.delete(order['base_order']['order_id'], 'COMPLETED')
 
     def _handle_completed_reserve_order(self, order):
-        logging.debug('Reserve order {} completed'.format(order['order_id']))
+        logger.info('Reserve order {} completed'.format(order['order_id']))
         self._storage.update_order_status(order['order_id'], 'WAIT_FOR_PROFIT')
         self._create_profit_order(order)
 
     def _handle_open_reserve_order(self, order):
         is_order_partially_completed = self._api.is_order_partially_completed(order['order_id'])
         if is_order_partially_completed:
-            logging.debug('Order {} is partially completed'.format(order['order_id']))
+            logger.debug('Order {} is partially completed'.format(order['order_id']))
         else:
             self._check_reserve_order(order)
 
     def _handle_orders_wait_for_profit(self, wait_orders):
         try:
             for order in wait_orders:
-                self._create_profit_order(order, self._profit_markup)
+                self._create_profit_order(order)
         except Exception as e:
-            logging.exception('Cannot handle orders waiting for profit')
+            logger.exception('Cannot handle orders waiting for profit')
 
     def _check_reserve_order(self, order):
         profile, profit_markup, mean_price = self._advisor.get_advice()
         if order['profile'] == profile:
             my_need_price = self._calculate_desired_reserve_price(mean_price, profile)
-            if math.fabs(my_need_price - float(order['price'])) > float(
-                    order['price']) * self._reserve_price_distribution:
-                logging.debug('Reserve price has changed for order {} -> {}: {}'
+            if math.fabs(my_need_price - float(order['order_data']['price'])) > float(
+                    order['order_data']['price']) * self._reserve_price_distribution:
+                logger.debug('Reserve price has changed for order {} -> {}: {}'
                               .format(order['order_id'], order['order_data']['price'], my_need_price))
                 self._cancel_order(order)
         else:
-            logging.debug('Profile has changed for order {}: {} -> {}'
-                          .format(order['order_id'], order['profile'], profile))
+            logger.debug('Profile has changed for order {}: {} -> {}'
+                         .format(order['order_id'], order['profile'], profile))
             if profit_markup < self._profit_markup:
-                logging.debug("Profit to small, won't cancel order {}".format(order['order_id']))
+                logger.debug("Profit to small, won't cancel order {}".format(order['order_id']))
             else:
                 self._cancel_order(order)
 
@@ -147,22 +148,23 @@ class Worker:
             same_profile_orders = [o for o in all_orders if o['profile'] == profile]
             same_profile_profit_orders = [o for o in same_profile_orders if o['order_type'] == 'PROFIT']
             if len(same_profile_profit_orders) >= self._get_max_open_profit_orders_limit(profile):
-                logging.debug('Too much orders for profile {}: {}'.format(profile, len(same_profile_profit_orders)))
+                logger.debug('Too much orders for profile {}: {}'.format(profile, len(same_profile_profit_orders)))
                 return
             if profit_markup < self._profit_markup:
-                logging.debug('Too small profit markup: {} < {}'.format(profit_markup, self._profit_markup))
+                logger.debug('Too small profit markup: {:.4f} < {}'.format(profit_markup, self._profit_markup))
                 return
             # Ордер с минимальным отклонением от текущей средней цены
-            min_price_diff = min(
-                [abs(float(o['order_data']['price']) - avg_price) for o in same_profile_orders]) / avg_price
-            # Првоеряем минимальное отклонение цены от существующих ордеров:
-            if min_price_diff <= self._profit_order_price_deviation:
-                logging.debug('Price deviation with other orders is too small: {} < {}'.format(min_price_diff,
-                                                                                               self._profit_order_price_deviation))
-                return
+            if same_profile_orders:
+                min_price_diff = min(
+                    [abs(float(o['order_data']['price']) - avg_price) for o in same_profile_orders]) / avg_price
+                # Првоеряем минимальное отклонение цены от существующих ордеров:
+                if min_price_diff <= self._profit_order_price_deviation:
+                    logger.debug('Price deviation with other orders is too small: {} < {}'.format(min_price_diff,
+                                                                                                  self._profit_order_price_deviation))
+                    return
             self._create_reserve_order(profile, avg_price)
         except Exception as e:
-            logging.exception('Cannot make reserve')
+            logger.exception('Cannot make reserve')
 
     def _create_reserve_order(self, profile, avg_price):
         my_need_price = self._calculate_desired_reserve_price(avg_price, profile)
@@ -177,7 +179,7 @@ class Worker:
         open_orders = self._api.get_open_orders(self._currency_1, self._currency_2)
         new_order = next(order for order in open_orders if order['order_id'] == new_order_id)
         stored_order = self._storage.create_order(new_order, profile, 'RESERVE')
-        logging.debug('Created new reserve order:\n{}'.format(stored_order))
+        logger.info('Created new reserve order:\n{}'.format(stored_order))
 
     def _create_profit_order(self, base_order):
         """
@@ -190,15 +192,15 @@ class Worker:
         profile, profit_markup, avg_price = self._advisor.get_advice()
         base_profile = base_order['profile']
         if profile != base_profile:
-            logging.debug('Profile has changed: {}->{}. Will not create profit order for reserve order {}'
-                          .format(base_profile, profile, base_order['order_id']))
+            logger.debug('Profile has changed: {}->{}. Will not create profit order for reserve order {}'
+                         .format(base_profile, profile, base_order['order_id']))
             return
         if profit_markup < self._profit_markup:
-            logging.debug('Profit markup too amall: {} < {}. Will not create profit order for reserve order {}'
-                          .format(profit_markup, self._profit_markup, base_order['order_id']))
+            logger.debug('Profit markup too small: {:.4f} < {}. Will not create profit order for reserve order {}'
+                         .format(profit_markup, self._profit_markup, base_order['order_id']))
         quantity = self._calculate_profit_quantity(base_order['order_data'], base_profile, profit_markup)
 
-        price = self._calculate_profit_price(quantity, base_order, base_profile, profit_markup)
+        price = self._calculate_profit_price(quantity, base_order['order_data'], base_profile, profit_markup)
         new_order_id = self._api.create_order(
             currency_1=self._currency_1,
             currency_2=self._currency_2,
@@ -210,7 +212,7 @@ class Worker:
         new_order = next(order for order in open_orders if order['order_id'] == new_order_id)
         stored_order = self._storage.create_order(new_order, base_profile, 'PROFIT', base_order)
         self._storage.update_order_status(base_order['order_id'], 'PROFIT_ORDER_CREATED')
-        logging.debug('Created new profit order: {}'.format(stored_order))
+        logger.info('Created new profit order: {}'.format(stored_order))
 
     def _profit_order_type(self, profile):
         if profile == 'UP':

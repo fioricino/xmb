@@ -1,6 +1,7 @@
 import logging
 import time
 
+logger = logging.getLogger('xmb')
 
 class BackgroundStatAdvisor:
     def __init__(self, trend_analyzer, market_api, period=3, currency_1='BTC', currency_2='USD'):
@@ -21,7 +22,7 @@ class BackgroundStatAdvisor:
                 self.update_advice()
                 time.sleep(self._period)
             except Exception as e:
-                logging.error(str(e))
+                logger.error(str(e))
 
     def stop_background_process(self):
         self._interrupted = True
@@ -29,3 +30,6 @@ class BackgroundStatAdvisor:
     def update_advice(self):
         deals = self._market_api.get_trades(self._currency_1, self._currency_2)
         self._profile, self._profit_markup, self._avg_price = self._trend_analyzer.get_profile(deals)
+
+    def get_advice(self):
+        return self._profile, self._profit_markup, self._avg_price
