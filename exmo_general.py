@@ -97,13 +97,15 @@ class Worker:
             self._handle_completed_reserve_order(order)
 
     def _handle_completed_profit_order(self, order):
-        logger.info('Profit order {} completed'.format(order['order_id']))
-        self._storage.delete(order['order_id'], 'COMPLETED')
-        self._storage.delete(order['base_order']['order_id'], 'COMPLETED')
+        logger.info('Profit order {} completed. Profit: {}, Profile: {}'.format(order['order_id'],
+                                                                                order['profit_markup'],
+                                                                                order['profile']))
+        self._storage.delete(order['order_id'], 'COMPLETED', self._get_time())
+        self._storage.delete(order['base_order']['order_id'], 'COMPLETED', self._get_time())
 
     def _handle_completed_reserve_order(self, order):
         logger.info('Reserve order {} completed'.format(order['order_id']))
-        self._storage.update_order_status(order['order_id'], 'WAIT_FOR_PROFIT')
+        self._storage.update_order_status(order['order_id'], 'WAIT_FOR_PROFIT', self._get_time())
         self._create_profit_order(order)
 
     def _handle_open_reserve_order(self, order):
@@ -139,7 +141,7 @@ class Worker:
 
     def _cancel_order(self, order):
         self._api.cancel_order(order['order_id'])
-        self._storage.delete(order['order_id'], 'CANCELED')
+        self._storage.delete(order['order_id'], 'CANCELED', self._get_time())
 
     def _make_reserve(self):
         try:
@@ -178,7 +180,8 @@ class Worker:
         )
         open_orders = self._api.get_open_orders(self._currency_1, self._currency_2)
         new_order = next(order for order in open_orders if order['order_id'] == new_order_id)
-        stored_order = self._storage.create_order(new_order, profile, 'RESERVE')
+        stored_order = self._storage.create_order(new_order, profile, 'RESERVE', base_order=None,
+                                                  created=self._get_time())
         logger.info('Created new reserve order:\n{}'.format(stored_order))
 
     def _create_profit_order(self, base_order):
@@ -206,13 +209,17 @@ class Worker:
             currency_2=self._currency_2,
             quantity=quantity,
             price=price,
-            type=self._profit_order_type(base_profile)
+            type=self._profit_order_type(base_profile),
         )
         open_orders = self._api.get_open_orders(self._currency_1, self._currency_2)
         new_order = next(order for order in open_orders if order['order_id'] == new_order_id)
-        stored_order = self._storage.create_order(new_order, base_profile, 'PROFIT', base_order)
-        self._storage.update_order_status(base_order['order_id'], 'PROFIT_ORDER_CREATED')
+        stored_order = self._storage.create_order(new_order, base_profile, 'PROFIT', base_order=base_order,
+                                                  created=self._get_time(), profit_markup=profit_markup)
+        self._storage.update_order_status(base_order['order_id'], 'PROFIT_ORDER_CREATED', self._get_time())
         logger.info('Created new profit order: {}'.format(stored_order))
+
+    def _get_time(self):
+        return int(time.time())
 
     def _profit_order_type(self, profile):
         if profile == 'UP':

@@ -81,7 +81,7 @@ class MarketSimulator:
     def update_timestamp(self, timestamp):
         self.timestamp = timestamp
         new_deals = []
-        while int(self.deals[self.index]['date']) <= timestamp:
+        while int(self.deals[self.index]['date']) < timestamp:
             new_deals.append(self.deals[self.index])
             self.index += 1
         self._handle_deals(new_deals)
