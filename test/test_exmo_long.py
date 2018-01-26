@@ -1,17 +1,35 @@
 import unittest
 
-from exmo_general import Worker, Profiles
+from exmo_general import Worker
+from json_api import JsonStorage
 
+
+class StorageMock(JsonStorage):
+    def __init__(self):
+        super(StorageMock, self).__init__()
+        self.archive = {}
+
+    def save_to_disk(self, obj, path):
+        pass
+
+    def delete(self, order_id, status):
+        super(StorageMock, self).delete(order_id, status)
+        self.archive[order_id] = status
 
 class InstantApi:
     def __init__(self, btc_balance, usd_balance, stock_fee, trades):
         self.balances = {'BTC': btc_balance, 'USD': usd_balance}
         self.stock_fee = stock_fee
         self.trades = trades
-        self.trades_index = -1;
+        self.trades_index = -1
+        self.orders = []
+        self.order_id = 0
 
     def get_open_orders(self, currency_1, currency_2):
-        return []
+        result = self.orders[:]
+        if len(self.orders):
+            self.orders.pop(0)
+        return result
 
     def is_order_partially_completed(self, order_id):
         return False
@@ -31,7 +49,10 @@ class InstantApi:
             print('Sell {} BTC for price {}'.format(quantity, price))
             self.balances['BTC'] -= quantity
             self.balances['USD'] += quantity * price * (1 - self.stock_fee)
-        return {'order_id': 'test'}
+        self.order_id += 1
+        self.orders.append({'order_id': str(self.order_id), 'type': type, 'quantity': str(quantity),
+                            'price': str(price)})
+        return str(self.order_id)
 
     def get_trades(self, currency_1, currency_2):
         for trade in self.trades:
@@ -50,8 +71,8 @@ class TestExmoLong(unittest.TestCase):
     def test_up(self):
         initial_usd_balance = 100
         api = InstantApi(btc_balance=0, usd_balance=initial_usd_balance, stock_fee=0.1, trades=None)
-        worker = Worker(api, profile=Profiles.UP, stock_fee=0.1,
-                        spend_profit_markup=0.1, currency_2_deal_size=100, currency_1_min_deal_size=1)
+        worker = Worker(api, StorageMock(), profile='UP', stock_fee=0.1,
+                        profit_markup=0.1)
         current_price = 10
 
         def get_avg_price():
@@ -62,15 +83,18 @@ class TestExmoLong(unittest.TestCase):
         worker.get_avg_price = get_avg_price
 
         for i in range(100):
-            worker.main_flow()
+            try:
+                worker.main_flow()
+            except Worker.ScriptQuitCondition:
+                pass
         print(api.balances)
         self.assertTrue(api.balances['USD'] > initial_usd_balance)
 
     def test_down(self):
         initial_btc_balance = 10
         api = InstantApi(btc_balance=initial_btc_balance, usd_balance=0, stock_fee=0.1, trades=None)
-        worker = Worker(api, profile=Profiles.DOWN, stock_fee=0.1,
-                        spend_profit_markup=0.1, currency_1_deal_size=10, currency_1_min_deal_size=1)
+        worker = Worker(api, StorageMock(), profile='DOWN', stock_fee=0.1,
+                        profit_markup=0.1, currency_1_deal_size=10)
         current_price = 100
 
         def get_avg_price():
@@ -81,15 +105,18 @@ class TestExmoLong(unittest.TestCase):
         worker.get_avg_price = get_avg_price
 
         for i in range(100):
-            worker.main_flow()
+            try:
+                worker.main_flow()
+            except Worker.ScriptQuitCondition:
+                pass
         print(api.balances)
         self.assertTrue(api.balances['BTC'] > initial_btc_balance)
 
     def test_up_natural(self):
         initial_usd_balance = 100
         api = InstantApi(btc_balance=0, usd_balance=initial_usd_balance, stock_fee=0.002, trades=None)
-        worker = Worker(api, profile=Profiles.UP, stock_fee=0.002,
-                        spend_profit_markup=0.001, currency_2_deal_size=100, currency_1_min_deal_size=0.001)
+        worker = Worker(api, StorageMock(), profile='UP', stock_fee=0.002,
+                        profit_markup=0.001)
         current_price = 10000
 
         def get_avg_price():
@@ -100,15 +127,18 @@ class TestExmoLong(unittest.TestCase):
         worker.get_avg_price = get_avg_price
 
         for i in range(100):
-            worker.main_flow()
+            try:
+                worker.main_flow()
+            except Worker.ScriptQuitCondition:
+                pass
         print(api.balances)
         self.assertTrue(api.balances['USD'] > initial_usd_balance)
 
     def test_down_natural(self):
         initial_btc_balance = 0.01
         api = InstantApi(btc_balance=initial_btc_balance, usd_balance=0, stock_fee=0.002, trades=None)
-        worker = Worker(api, profile=Profiles.DOWN, stock_fee=0.002,
-                        spend_profit_markup=0.001, currency_1_deal_size=0.01, currency_1_min_deal_size=0.001)
+        worker = Worker(api, StorageMock(), profile='DOWN', stock_fee=0.002,
+                        profit_markup=0.001, currency_1_deal_size=0.01)
         current_price = 15000
 
         def get_avg_price():
@@ -119,7 +149,10 @@ class TestExmoLong(unittest.TestCase):
         worker.get_avg_price = get_avg_price
 
         for i in range(100):
-            worker.main_flow()
+            try:
+                worker.main_flow()
+            except Worker.ScriptQuitCondition:
+                pass
         print(api.balances)
         self.assertTrue(api.balances['BTC'] > initial_btc_balance)
 
