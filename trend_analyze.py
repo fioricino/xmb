@@ -65,7 +65,14 @@ class TrendAnalyzer:
         if np.math.isnan(last_derivative):
             return None, None, None
         profit_markup = abs(self.profit_multiplier * last_derivative)
-        mean_price = self._calculate_mean_price(trades, self._mean_price_period)
+        period = self._mean_price_period
+        mean_price = self._calculate_mean_price(trades, period)
+        tries_count = 0
+        while mean_price is None and tries_count < 10:
+            period *= 2
+            mean_price = self._calculate_mean_price(trades, period)
+        if mean_price is None:
+            raise ValueError('Cannot calculate mean price')
         logger.debug('Deal time: {}\nDeal id: {}\nLast derivative: {}\nProfit markup: {}\nMean price: {}'.format(
             time.ctime(int(trades[-1]['date'])), trades[-1]['trade_id'], last_derivative, profit_markup, mean_price
         ))
@@ -81,10 +88,10 @@ class TrendAnalyzer:
             time_passed = self._current_time() + self._stock_time_offset * 60 * 60 - int(deal['date'])
             if time_passed < mean_price_period:
                 prices.append(float(deal['price']))
-                if not prices:
-                    raise ValueError('Не удается вычислить среднюю цену')
-        avg_price = sum(prices) / len(prices)
-        return avg_price
+        if prices:
+            avg_price = sum(prices) / len(prices)
+            return avg_price
+        return None
 
     def _current_time(self):
         return time.time()

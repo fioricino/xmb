@@ -8,9 +8,9 @@ logger = logging.getLogger('xmb')
 
 class JsonStorage:
     def __init__(self, order_file='', archive_folder=''):
-        self.orders = self.load_orders_from_disk()
         self._order_file = order_file
         self._archive_folder = archive_folder
+        self.orders = self.load_orders_from_disk()
 
     def delete(self, order_id, status, completed):
         logger.debug('Archive order %s with status %s', order_id, status)
@@ -76,4 +76,5 @@ class JsonStorage:
             with open(self._order_file, 'r') as f:
                 return json.load(f)
         except:
+            logger.exception('Cannot read orders')
             return {}

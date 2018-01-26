@@ -137,3 +137,7 @@ class MarketSimulator:
                                                                                  + self.balances_in_orders['BTC'],
                                                                                  self.balances['USD']
                                                                                  + self.balances_in_orders['USD']))
+
+    def get_balances_with_orders(self):
+        return {'USD': self.balances['USD']
+                       + self.balances_in_orders['USD'], 'BTC': self.balances['BTC'] + self.balances_in_orders['BTC']}

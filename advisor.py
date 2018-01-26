@@ -1,5 +1,6 @@
 import logging
 import time
+from threading import Thread
 
 logger = logging.getLogger('xmb')
 
@@ -13,9 +14,9 @@ class BackgroundStatAdvisor:
         self._profile = None
         self._profit_markup = None
         self._avg_price = None
-        self.start_background_process()
+        self.run_in_new_thread()
 
-    def start_background_process(self):
+    def run(self):
         self._interrupted = False
         while not self._interrupted:
             try:
@@ -30,6 +31,11 @@ class BackgroundStatAdvisor:
     def update_advice(self):
         deals = self._market_api.get_trades(self._currency_1, self._currency_2)
         self._profile, self._profit_markup, self._avg_price = self._trend_analyzer.get_profile(deals)
+        i = 0
 
     def get_advice(self):
         return self._profile, self._profit_markup, self._avg_price
+
+    def run_in_new_thread(self):
+        thread = Thread(target=self.run)
+        thread.start()

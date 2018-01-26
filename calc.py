@@ -62,8 +62,9 @@ def calculate_profit(deals):
 
 
 if __name__ == '__main__':
-    deals = ExmoApi().get_trades('BTC', 'USD')
+    deals = ExmoApi().get_user_trades('BTC', 'USD', limit=7, offset=2)
     if deals:
+        del (deals[-2])
         c = calculate_profit(deals)
         print(c)
         print('USD: {}'.format(c['usd']))

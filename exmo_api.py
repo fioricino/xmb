@@ -34,7 +34,7 @@ class ExmoApi:
     def is_order_partially_completed(self, order_id):
         try:
             trades = ExmoApi._call_api('order_trades', order_id=order_id)
-        except ApiError as e:
+        except Exception as e:
             if 'Error 50304' in str(e):
                 return False
             else:
@@ -43,7 +43,7 @@ class ExmoApi:
 
     def cancel_order(self, order_id):
         logger.info('Cancel order %s', order_id)
-        return ExmoApi._call_api('order_cancel', order_id)
+        return ExmoApi._call_api('order_cancel', order_id=order_id)
 
     def get_balances(self):
         return ExmoApi._call_api('user_info')['balances']
@@ -60,6 +60,10 @@ class ExmoApi:
 
     def get_trades(self, currency_1, currency_2):
         return ExmoApi._call_api('trades', pair=currency_1 + '_' + currency_2)[currency_1 + '_' + currency_2]
+
+    def get_user_trades(self, currency_1, currency_2, offset=0, limit=1000):
+        return ExmoApi._call_api('user_trades', pair=currency_1 + '_' + currency_2, offset=offset, limit=limit)[
+            currency_1 + '_' + currency_2]
 
     @staticmethod
     def _call_api(api_method, http_method="POST", **kwargs):

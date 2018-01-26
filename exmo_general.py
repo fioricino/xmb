@@ -171,18 +171,34 @@ class Worker:
     def _create_reserve_order(self, profile, avg_price):
         my_need_price = self._calculate_desired_reserve_price(avg_price, profile)
         my_amount = self._calculate_desired_reserve_amount(profile)
-        new_order_id = self._api.create_order(
+        new_order_id = str(self._api.create_order(
             currency_1=self._currency_1,
             currency_2=self._currency_2,
             quantity=my_amount,
             price=my_need_price,
             type=self._reserve_order_type(profile)
-        )
-        open_orders = self._api.get_open_orders(self._currency_1, self._currency_2)
-        new_order = next(order for order in open_orders if order['order_id'] == new_order_id)
+        ))
+        open_orders = self._get_open_orders_for_create()
+        new_orders = [order for order in open_orders if order['order_id'] == new_order_id]
+        if not new_orders:
+            # Order already completed
+            user_trades = self._get_user_trades()
+            new_orders = [order for order in user_trades if order['order_id'] == new_order_id]
+        if not new_orders:
+            raise ApiError('Order not found: {}'.format(new_order_id))
+        new_order = new_orders[0]
         stored_order = self._storage.create_order(new_order, profile, 'RESERVE', base_order=None,
                                                   created=self._get_time())
         logger.info('Created new reserve order:\n{}'.format(stored_order))
+
+    def _get_user_trades(self):
+        try:
+            return self._api.get_user_trades(self._currency_1, self._currency_2)
+        except Exception as e:
+            # assume api calls limit exceeded
+            logger.exception('Cannot read last created order id in trades', e)
+            time.sleep(1)
+            return self._api.get_user_trades(self._currency_1, self._currency_2)
 
     def _create_profit_order(self, base_order):
         """
@@ -194,29 +210,48 @@ class Worker:
         # balances = self._api.get_balances()
         profile, profit_markup, avg_price = self._advisor.get_advice()
         base_profile = base_order['profile']
-        if profile != base_profile:
-            logger.debug('Profile has changed: {}->{}. Will not create profit order for reserve order {}'
-                         .format(base_profile, profile, base_order['order_id']))
-            return
-        if profit_markup < self._profit_markup:
-            logger.debug('Profit markup too small: {:.4f} < {}. Will not create profit order for reserve order {}'
-                         .format(profit_markup, self._profit_markup, base_order['order_id']))
-        quantity = self._calculate_profit_quantity(base_order['order_data'], base_profile, profit_markup)
+        # if profile != base_profile:
+        #     logger.debug('Profile has changed: {}->{}. Will not create profit order for reserve order {}'
+        #                  .format(base_profile, profile, base_order['order_id']))
+        #     return
+        # if profit_markup < self._profit_markup:
+        #     logger.debug('Profit markup too small: {:.4f} < {}. Will not create profit order for reserve order {}'
+        #                  .format(profit_markup, self._profit_markup, base_order['order_id']))
+        order_profit_markup = max(profit_markup,
+                                  self._profit_markup) if base_profile == profile else self._profit_markup
+        quantity = self._calculate_profit_quantity(base_order['order_data'], base_profile, (order_profit_markup))
 
         price = self._calculate_profit_price(quantity, base_order['order_data'], base_profile, profit_markup)
-        new_order_id = self._api.create_order(
+        new_order_id = str(self._api.create_order(
             currency_1=self._currency_1,
             currency_2=self._currency_2,
             quantity=quantity,
             price=price,
             type=self._profit_order_type(base_profile),
-        )
-        open_orders = self._api.get_open_orders(self._currency_1, self._currency_2)
-        new_order = next(order for order in open_orders if order['order_id'] == new_order_id)
+        ))
+        open_orders = self._get_open_orders_for_create()
+        new_orders = [order for order in open_orders if order['order_id'] == new_order_id]
+        if not new_orders:
+            # Order already completed
+            user_trades = self._get_user_trades()
+            new_orders = [order for order in user_trades if order['order_id'] == new_order_id]
+        if not new_orders:
+            raise ApiError('Order not found: {}'.format(new_order_id))
+        new_order = new_orders[0]
+
         stored_order = self._storage.create_order(new_order, base_profile, 'PROFIT', base_order=base_order,
-                                                  created=self._get_time(), profit_markup=profit_markup)
+                                                  created=self._get_time(), profit_markup=order_profit_markup)
         self._storage.update_order_status(base_order['order_id'], 'PROFIT_ORDER_CREATED', self._get_time())
         logger.info('Created new profit order: {}'.format(stored_order))
+
+    def _get_open_orders_for_create(self):
+        try:
+            return self._api.get_open_orders(self._currency_1, self._currency_2)
+        except Exception as e:
+            # assume api calls limit exceeded
+            logger.exception('Cannot read last created order id', e)
+            time.sleep(1)
+            return self._api.get_open_orders(self._currency_1, self._currency_2)
 
     def _get_time(self):
         return int(time.time())
@@ -255,10 +290,10 @@ class Worker:
         amount_in_order = float(base_order['quantity'])
         if profile == 'UP':
             # Учитываем комиссию
-            return amount_in_order * (1 - self._stock_fee)
+            return max(self._currency_1_deal_size, amount_in_order * (1 - self._stock_fee))
         elif profile == 'DOWN':
             # Комиссия была в долларах
-            return amount_in_order * (1 + profit_markup) / (1 - self._stock_fee)
+            return max(self._currency_1_deal_size, amount_in_order * (1 + profit_markup) / (1 - self._stock_fee))
         raise ValueError('Unrecognized profile: ' + profile)
 
     def _calculate_profit_price(self, quantity, base_order, profile, profit_markup):
