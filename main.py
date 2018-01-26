@@ -66,7 +66,7 @@ if __name__ == '__main__':
 
     trend_analyzer = TrendAnalyzer(rolling_window=6, profit_multiplier=64, mean_price_period=4)
 
-    advisor = BackgroundStatAdvisor(trend_analyzer, exmo_public_api)
+    advisor = BackgroundStatAdvisor(trend_analyzer, exmo_public_api, period=1)
     worker = Worker(exmo_api,
                     storage,
                     advisor,

@@ -68,7 +68,7 @@ class ExmoApi:
 
     @staticmethod
     def _call_api(api_method, http_method="POST", **kwargs):
-        logger.debug('Call Exmo api: {}'.format(api_method))
+        logger.debug('Call Exmo api. Method {}. Payload: {}'.format(api_method, kwargs))
         payload = {'nonce': int(round(time.time() * 1000))}
 
         if kwargs:
