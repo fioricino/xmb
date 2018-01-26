@@ -5,6 +5,7 @@ from threading import Thread
 
 from advisor import BackgroundStatAdvisor
 from exmo_api import ExmoApi
+from exmo_api_proxy import ExmoApiProxy
 from exmo_general import Worker
 
 # run period in seconds
@@ -59,12 +60,13 @@ PROFIT_MARKUP = 0.001
 if __name__ == '__main__':
     # logging.basicConfig(level=logging.DEBUG)
     exmo_api = ExmoApi()
+    exmo_public_api = ExmoApiProxy(proxy_host='localhost', proxy_port=9050)
     storage = JsonStorage(order_file=os.path.join('real_run', 'orders.json'),
                           archive_folder=os.path.join('real_run', 'archive'))
 
     trend_analyzer = TrendAnalyzer(rolling_window=6, profit_multiplier=64, mean_price_period=4)
 
-    advisor = BackgroundStatAdvisor(trend_analyzer, exmo_api)
+    advisor = BackgroundStatAdvisor(trend_analyzer, exmo_public_api)
     worker = Worker(exmo_api,
                     storage,
                     advisor,

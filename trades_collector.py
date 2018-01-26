@@ -1,11 +1,12 @@
 import json
+import logging
 import os.path
 import time
 
-from exmo_api import ExmoApi
+from exmo_api_proxy import ExmoApiProxy
 
 if __name__ == '__main__':
-    api = ExmoApi()
+    api = ExmoApiProxy('localhost', 9050)
     trades = {}
     counter = -1
     while True:
@@ -19,4 +20,5 @@ if __name__ == '__main__':
                     json.dump(trades, f)
             time.sleep(3)
         except:
+            logging.exception('Cannot get deals')
             pass

@@ -18,6 +18,7 @@ API_VERSION = 'v1'
 logger = logging.getLogger('xmb')
 
 class ExmoApi:
+
     def get_open_orders(self, currency_1, currency_2):
         try:
             return ExmoApi._call_api('user_open_orders')[currency_1 + '_' + currency_2]
@@ -67,6 +68,7 @@ class ExmoApi:
 
     @staticmethod
     def _call_api(api_method, http_method="POST", **kwargs):
+        logger.debug('Call Exmo api: {}'.format(api_method))
         payload = {'nonce': int(round(time.time() * 1000))}
 
         if kwargs:
