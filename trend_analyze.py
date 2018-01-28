@@ -38,16 +38,28 @@ class TrendAnalyzer:
     def _get_derivative_func(self, deals):
         # TODO make function(time)!!!
         deals_df = pd.DataFrame([p for p in deals])
-        price_func, step = self._get_interpolated_func([d for d in deals_df['time']], [p for p in deals_df['price']])
+        price_func, step, x_lin = self._get_interpolated_func([d for d in deals_df['time']],
+                                                              [p for p in deals_df['price']])
+        normalized_prce_func = self._normalize_func(price_func)
+        # TODO calculate with amount
+        rolling_mean_price_func = self._get_rolling_mean_func(normalized_prce_func)
+        #       tt = self.get_interpolated_func([x for x, y in enumerate(rolling_mean_price_func[self._rolling_window:])],[y for y in rolling_mean_price_func[self._rolling_window:]])
+        derivative_func = self._get_der_func(rolling_mean_price_func, step)
+        rolling_mean_derivative_func = self._get_rolling_mean_func(derivative_func)
+        return rolling_mean_derivative_func
+
+    def _get_der_func(self, rolling_mean_price_func, step):
+        return [sp.derivative(lambda x: rolling_mean_price_func[x], i) / step for i in
+                range(1, len(rolling_mean_price_func) - 1)]
+
+    def _get_rolling_mean_func(self, normalized_prce_func):
+        rolling_mean_price_func = pd.DataFrame(normalized_prce_func).rolling(self._rolling_window).mean()[0]
+        return rolling_mean_price_func
+
+    def _normalize_func(self, price_func):
         mean_price = price_func.mean()
         normalized_prce_func = price_func / mean_price
-        # TODO calculate with amount
-        rolling_mean_price_func = pd.DataFrame(normalized_prce_func).rolling(self._rolling_window).mean()[0]
-        #       tt = self.get_interpolated_func([x for x, y in enumerate(rolling_mean_price_func[self._rolling_window:])],[y for y in rolling_mean_price_func[self._rolling_window:]])
-        derivative_func = [sp.derivative(lambda x: rolling_mean_price_func[x], i) / step for i in
-                           range(1, len(rolling_mean_price_func) - 1)]
-        rolling_mean_derivative_func = pd.DataFrame(derivative_func).rolling(self._rolling_window).mean()
-        return rolling_mean_derivative_func[0]
+        return normalized_prce_func
 
     def _get_interpolated_func(self, x, y):
         polyfit = np.polyfit(x, y, self._interpolation_degree)
@@ -56,7 +68,7 @@ class TrendAnalyzer:
         x_lin = np.linspace(x[0], x[-1], 100)
         step = (x_lin[-1] - x_lin[0]) / (len(x_lin) - 1)
         new_func = poly1d(x_lin)
-        return new_func, step
+        return new_func, step, x_lin
 
     def get_profile(self, trades):
         last_deals = self._get_prices_for_period(trades)

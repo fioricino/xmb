@@ -46,8 +46,8 @@ def create_handlers(dr):
     return [debug_handler, info_handler, error_handler]
 
 
-INITIAL_BTC_BALANCE = 0.0025
-INITIAL_USD_BALANCE = 30
+INITIAL_BTC_BALANCE = 0.004
+INITIAL_USD_BALANCE = 45
 ROLLING_WINDOW = 6
 PROFIT_MULTIPLIER = 64
 MEAN_PRICE_PERIOD = 4
@@ -109,7 +109,8 @@ def get_stats():
 
 
 if __name__ == '__main__':
-    base_dir = os.path.join('results', '2day')
+    base_dir = os.path.join('results', '2day_3ord')
+    os.makedirs(base_dir, exist_ok=True)
     handlers = []
     for new_order_price_deviation in NEW_ORDER_PRICE_DISTRIBUTIONS:
         price_deviation_dir = os.path.join(base_dir, 'price_deviation_{}'.format(new_order_price_deviation))
@@ -143,7 +144,7 @@ if __name__ == '__main__':
                         storage = JsonStorage(os.path.join(profit_multiplier_dir, 'orders.json'), archive_dir)
 
                         ta = TrendAnalyzer(rolling_window=ROLLING_WINDOW, profit_multiplier=profit_multiplier,
-                                           mean_price_period=profit_lifetime, profit_free_weight=profit_free_weight)
+                                           mean_price_period=4, profit_free_weight=profit_free_weight)
                         ta._current_time = lambda: sim.timestamp
 
                         advisor = InstantAdvisor(sim, ta)
@@ -151,7 +152,7 @@ if __name__ == '__main__':
                         last_timestamp = sim.get_max_timestamp()
                         worker = Worker(sim, storage, advisor, new_order_price_deviation=new_order_price_deviation,
                                         profit_order_lifetime=profit_lifetime,
-                                        profit_markup=PROFIT_MARKUP, max_profit_orders_down=2, max_profit_orders_up=2,
+                                        profit_markup=PROFIT_MARKUP, max_profit_orders_down=3, max_profit_orders_up=3,
                                         profit_price_distribution=profit_price_dev)
                         worker._get_time = lambda: sim.timestamp
                         last_stat_timestamp = timestamp
