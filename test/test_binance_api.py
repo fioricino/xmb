@@ -19,7 +19,8 @@ if __name__ == '__main__':
     api = BinanceApi()
 
     # api.prices()
-    api.get_open_orders('LTC','BTC')
+    #api.get_open_orders('LTC','BTC')
+    api.get_canceled_orders('LTC','BTC')
 
 # def prices(self):
 #     """Get latest prices for all symbols."""

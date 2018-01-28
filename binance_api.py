@@ -35,7 +35,15 @@ class BinanceApi:
     def get_canceled_orders(self, currency_1, currency_2):
         try:
             timestamp = int(time.time() * 1000)
-            return BinanceApi._call_api('allOrders','GET',symbol=currency_1+currency_2, timestamp=timestamp)
+            url = "/api/" + API_VERSION + "/" + 'allOrders' \
+                  + '?symbol=' + currency_1 + currency_2 + '&timestamp=' + str(timestamp)
+            obj = BinanceApi._call_binance_api(url,'GET',timestamp=timestamp,symbol=currency_1+currency_2)
+            print(obj)
+            newObj = []
+            for order in obj:
+                if order['status'] is 'CANCELED':
+                    newObj.append(order)
+            return newObj
         except KeyError:
             return []
 
@@ -73,6 +81,41 @@ class BinanceApi:
             logger.debug('Received response: {}'.format(response))
             if 'error' in obj and obj['error']:
                 raise ApiError(obj['error'])
+            if 'code' in obj and obj['code']:
+                raise ApiError(obj['code'],obj['msg'])
             print(obj)
+            return obj
+            # return [
+            #     {
+            #         "symbol": "LTCBTC",
+            #         "orderId": 1,
+            #         "clientOrderId": "myOrder1",
+            #         "price": "0.1",
+            #         "origQty": "1.0",
+            #         "executedQty": "0.0",
+            #         "status": "NEW",
+            #         "timeInForce": "GTC",
+            #         "type": "LIMIT",
+            #         "side": "BUY",
+            #         "stopPrice": "0.0",
+            #         "icebergQty": "0.0",
+            #         "time": 1499827319559
+            #     },
+            #     {
+            #         "symbol": "LTCBTC",
+            #         "orderId": 1,
+            #         "clientOrderId": "myOrder1",
+            #         "price": "0.1",
+            #         "origQty": "1.0",
+            #         "executedQty": "0.0",
+            #         "status": "CANCELED",
+            #         "timeInForce": "GTC",
+            #         "type": "LIMIT",
+            #         "side": "BUY",
+            #         "stopPrice": "0.0",
+            #         "icebergQty": "0.0",
+            #         "time": 1499827319559
+            #     }
+            # ]
         except json.decoder.JSONDecodeError:
             raise ApiError('Ошибка анализа возвращаемых данных, получена строка', response)
