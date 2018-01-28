@@ -20,6 +20,7 @@ class JsonStorage:
             order_to_store['completed'] = completed
         self.save_to_disk(order_to_store, os.path.join(self._archive_folder, order_id + '.json'))
         self.orders.pop(order_id)
+        self.save_orders()
 
     def cancel_order(self, order_id, canceled):
         self.delete(order_id, 'CANCELED', canceled)
@@ -59,7 +60,7 @@ class JsonStorage:
             with open(os.path.join(self._archive_folder, filename)) as f:
                 d = json.load(f)
                 # TODO check time
-                if d['order_type'] == 'PROFIT':
+                if d['order_type'] == 'PROFIT' and d['status'] == 'COMPLETED':
                     stats[d['profile']] += float(d['profit_markup'])
         return stats
 

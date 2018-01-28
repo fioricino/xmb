@@ -108,7 +108,7 @@ class TestWorker(unittest.TestCase):
                         'profile': 'UP'}
         stored_order_s = json.dumps(stored_order)
         storage.orders[order_id] = stored_order
-        worker = Worker(api, storage, Advisor(), profit_order_price_deviation=0.2)
+        worker = Worker(api, storage, Advisor(), new_order_price_deviation=0.2)
         worker.main_flow()
 
         self.assertEqual(1, api.get_open_orders_called)
@@ -138,7 +138,7 @@ class TestWorker(unittest.TestCase):
                         'profile': 'UP'}
         stored_order_s = json.dumps(stored_order)
         storage.orders[order_id] = stored_order
-        worker = Worker(api, storage, Advisor(), profit_order_price_deviation=0.1, profit_markup=0.1)
+        worker = Worker(api, storage, Advisor(), new_order_price_deviation=0.1, profit_markup=0.1)
         worker.main_flow()
 
         self.assertEqual(1, api.get_open_orders_called)
@@ -187,7 +187,7 @@ class TestWorker(unittest.TestCase):
                         'profile': 'UP'}
         stored_order_s = json.dumps(stored_order)
         storage.orders[order_id] = stored_order
-        worker = Worker(api, storage, Advisor(), profit_order_price_deviation=0.1, profit_markup=0.1, stock_fee=0.2,
+        worker = Worker(api, storage, Advisor(), new_order_price_deviation=0.1, profit_markup=0.1, stock_fee=0.2,
                         currency_1_deal_size=4)
         worker.main_flow()
 

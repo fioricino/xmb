@@ -88,6 +88,7 @@ class ExmoApi:
         conn.close()
         try:
             obj = json.loads(response.decode('utf-8'))
+            logger.debug('Received response: {}'.format(response))
             if 'error' in obj and obj['error']:
                 raise ApiError(obj['error'])
             return obj

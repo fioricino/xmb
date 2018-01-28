@@ -13,7 +13,7 @@ class TrendAnalyzer:
     def __init__(self, rolling_window, profit_multiplier, mean_price_period,
                  interpolation_degree=20,
                  currency_1='BTC', currency_2='USD',
-                 stock_time_offset=0):
+                 stock_time_offset=0, profit_free_weight=0):
         warnings.simplefilter('ignore', np.RankWarning)
         self._interpolation_degree = interpolation_degree
         self._currency_1 = currency_1
@@ -21,7 +21,8 @@ class TrendAnalyzer:
         self._stock_time_offset = stock_time_offset
         self._rolling_window = rolling_window
         # TODO change if derivative is large??
-        self.profit_multiplier = profit_multiplier
+        self._profit_multiplier = profit_multiplier
+        self._profit_free_weight = profit_free_weight
         self._mean_price_period = mean_price_period
 
     def _get_prices_for_period(self, deals):
@@ -64,7 +65,7 @@ class TrendAnalyzer:
         last_derivative = derivative_func.iloc[index]
         if np.math.isnan(last_derivative):
             return None, None, None
-        profit_markup = abs(self.profit_multiplier * last_derivative)
+        profit_markup = abs(self._profit_multiplier * last_derivative) + self._profit_free_weight
         period = self._mean_price_period
         mean_price = self._calculate_mean_price(trades, period)
         tries_count = 0
