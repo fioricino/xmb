@@ -164,12 +164,12 @@ if __name__ == '__main__':
                                 timestamp = sim.get_timestamp()
                                 last_timestamp = sim.get_max_timestamp()
                                 worker = Worker(sim, storage, advisor,
-                                                new_order_price_deviation=new_order_price_deviation,
+                                                same_profile_order_price_deviation=new_order_price_deviation,
                                                 profit_order_lifetime=profit_lifetime,
                                                 profit_markup=PROFIT_MARKUP, max_profit_orders_down=5,
                                                 max_profit_orders_up=5,
                                                 profit_price_prev_price_deviation=profit_price_dev,
-                                                reserve_price_distribution=0.002)
+                                                reserve_price_avg_price_deviation=0.002)
                                 worker._get_time = lambda: sim.timestamp
                                 last_stat_timestamp = timestamp
                                 while timestamp < last_timestamp:
