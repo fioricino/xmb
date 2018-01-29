@@ -75,8 +75,8 @@ if __name__ == '__main__':
                     reserve_price_distribution=RESERVE_PRICE_DISTRIBUTION,
                     currency_1_deal_size=CURRENCY_1_DEAL_SIZE,
                     profit_markup=PROFIT_MARKUP,
-                    max_profit_orders_up=2,
-                    max_profit_orders_down=2,
-                    new_order_price_deviation=0.001)
+                    max_profit_orders_up=3,
+                    max_profit_orders_down=3,
+                    new_order_price_deviation=0.01)
     t = Thread(target=worker.run)
     t.run()

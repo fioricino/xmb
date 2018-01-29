@@ -162,11 +162,12 @@ class Worker:
         try:
             profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
             all_orders = self._storage.get_open_orders()
-            same_profile_orders = [o for o in all_orders if o['profile'] == profile and o['status'] == 'OPEN'
-                                   or o['status'] == 'WAIT_FOR_PROFIT' and not o['order_id']
-                                                                               in [oo[
-                                                                                       'base_order'] if 'base_order' in oo else None
-                                                                                   for oo in all_orders]]
+            same_profile_orders = [o for o in all_orders if o['profile'] == profile and o['order_type'] == 'RESERVE'
+                                   # or o['status'] == 'WAIT_FOR_PROFIT' and not o['order_id']
+                                   #                                           in [oo[
+                                   #                                                  'base_order'] if 'base_order' in oo else None
+                                   #                                             for oo in all_orders]
+                                   ]
             if len(same_profile_orders) >= self._get_max_open_profit_orders_limit(profile):
                 logger.debug('Too much orders for profile {}: {}'.format(profile, len(same_profile_orders)))
                 return

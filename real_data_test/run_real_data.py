@@ -72,13 +72,13 @@ class InstantAdvisor:
             self.last_update_ts = timestamp
 
 
-PROFIT_MULTIPLIERS = [32, 64, 96]
-PROFIT_LIFETIMES = [64, 128]
+PROFIT_MULTIPLIERS = [96]
+PROFIT_LIFETIMES = [64]
 PROFIT_PRICE_DEVIATIONS = [0.001]
-PROFIT_FREE_WEIGHTS = [0.0008, 0.0006, 0.0004]
+PROFIT_FREE_WEIGHTS = [0.0008]
 NEW_ORDER_PRICE_DISTRIBUTIONS = [0.005]
-LAST_DEALS = [100, 200]
-ROLLING_WINDOWS = [6, 12]
+LAST_DEALS = [100]
+ROLLING_WINDOWS = [6]
 
 
 def get_theor_balances(storage, market, stock_fee):
@@ -111,7 +111,7 @@ def get_stats():
 
 
 if __name__ == '__main__':
-    base_dir = os.path.join('results', 'night')
+    base_dir = os.path.join('results', 'new_fixstatus')
     os.makedirs(base_dir, exist_ok=True)
     handlers = []
     for last_deals in LAST_DEALS:
