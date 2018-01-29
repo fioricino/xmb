@@ -19,15 +19,15 @@ if __name__ == '__main__':
     api = BinanceApi()
 
     # api.prices()
-    #api.get_open_orders('LTC','BTC')
+    # api.get_open_orders('ETC','ETH')
     # for x in range(1,10):
     # api.get_canceled_orders('LTC','BTC')
-    # api.is_order_partially_completed('LTC','BTC',1)
-    # api.cancel_order('LTC','BTC',2)
+    # api.is_order_partially_completed('ETC','ETH',7117404)
+    # api.cancel_order('ETC','ETH',7119929)
     # api.get_balances()
-    # api.create_order('BTC','USDT',0.01,12000,'BUY')
-    # api.get_trades('BTC','USDT')
-    api.get_user_trades('BTC','USDT',0,500)
+    # api.create_order('ETC','ETH',0.08,0.5,'SELL')
+    api.get_trades('ETC','ETH')
+    # api.get_user_trades('BTC','USDT',0,500)
 
 # def prices(self):
 #     """Get latest prices for all symbols."""

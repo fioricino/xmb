@@ -32,7 +32,9 @@ class BinanceApi:
             timestamp = BinanceApi._calculateTimestamp()
             url = "/api/" + API_VERSION_3 + "/" + 'openOrders' \
                   + '?symbol='+currency_1+currency_2 + '&timestamp='+str(timestamp)
-            return BinanceApi._call_binance_api(url,'GET', symbol=currency_1+currency_2, timestamp=timestamp)
+            data =  BinanceApi._call_binance_api(url,'GET', symbol=currency_1+currency_2, timestamp=timestamp)
+            newData = BinanceApi._create_exmo_open_orders(self,data)
+            return newData
         except KeyError:
             logger.debug('No open market orders')
             return []
@@ -57,21 +59,24 @@ class BinanceApi:
             timestamp = BinanceApi._calculateTimestamp()
             url = "/api/" + API_VERSION_3 + "/" + 'order' \
                   + '?orderId=' + str(order_id) + '&symbol=' + currency_1 + currency_2 + '&timestamp=' + str(timestamp)
-            BinanceApi._call_binance_api(url, 'GET', symbol=currency_1 + currency_2, orderId=order_id,
-                                                  timestamp=timestamp)
-        except Exception as e:
-            if 'Error 50304' in str(e):
-                return False
+            status = BinanceApi._call_binance_api(url, 'GET', symbol=currency_1 + currency_2, orderId=order_id,
+                                                  timestamp=timestamp)['status']
+            if status == 'PARTIALLY_FILLED':
+                return True
             else:
-                raise e
-        return True
+                return False
+        except KeyError:
+            logger.debug('No open market orders from partially_completed')
+            return []
 
     def cancel_order(self, currency_1, currency_2, order_id):
         logger.info('Cancel order %s', order_id)
         timestamp = BinanceApi._calculateTimestamp()
         url = "/api/" + API_VERSION_3 + "/" + 'order'
-        return BinanceApi._call_binance_api(url, 'DELETE', symbol=currency_1 + currency_2, orderId=order_id,
+        data = BinanceApi._call_binance_api(url, 'DELETE', symbol=currency_1 + currency_2, orderId=order_id,
                                      timestamp=timestamp)
+        newData = BinanceApi._create_exmo_cancel_orders(self, data, order_id)
+        return newData
 
     def get_balances(self):
         timestamp = BinanceApi._calculateTimestamp()
@@ -83,7 +88,7 @@ class BinanceApi:
         logger.info('Create %s order (quantity=%s, price=%s)', side, quantity, price)
         timestamp = BinanceApi._calculateTimestamp()
         url = "/api/" + API_VERSION_3 + "/" + 'order'
-        return BinanceApi._call_binance_api(
+        orderId = BinanceApi._call_binance_api(
             url, http_method='POST',
             symbol=currency_1 + currency_2,
             quantity=quantity,
@@ -92,12 +97,15 @@ class BinanceApi:
             type='LIMIT',
             timestamp=timestamp,
             timeInForce='GTC'
-        )['order_id']
+        )['orderId']
+        return str(orderId)
 
 
     def get_trades(self, currency_1, currency_2):
         url = "/api/" + API_VERSION_1 + "/" + 'trades' + '?symbol=' + currency_1 + currency_2 + '&limit=' + TRADES_LIMIT
-        return BinanceApi._call_binance_api(url, 'GET')
+        data =  BinanceApi._call_binance_api(url, 'GET')
+        newData =  BinanceApi._create_exmo_trades(self,data)
+        return newData
 
     def get_user_trades(self, currency_1, currency_2, offset=0, limit=500):
         timestamp = BinanceApi._calculateTimestamp()
@@ -145,3 +153,39 @@ class BinanceApi:
     @staticmethod
     def _calculateTimestamp():
         return int(round(time.time() * 1000))
+
+    #transform Binance response to Exmo response
+    def _create_exmo_open_orders(self, data):
+        newData = []
+        for obj in data:
+            newObj = {}
+            newObj['order_id'] = obj['orderId']
+            newObj['created'] = obj['time']
+            newObj['type'] = obj['side']
+            newObj['pair'] = obj['symbol'][:3]+'_'+obj['symbol'][3:]
+            newObj['price'] = obj['price']
+            newObj['quantity'] = obj['origQty']
+            newData.append(newObj)
+        return newData
+
+    def _create_exmo_cancel_orders(self, data, orderId):
+        newObj = {}
+        if data['orderId'] == orderId:
+            newObj['result'] = 'true'
+            newObj['error'] = ''
+        else:
+            newObj['result'] = 'false'
+            newObj['error'] = 'Some error'
+        return newObj
+
+
+    def _create_exmo_trades(self,data):
+        newData = []
+        for obj in data:
+            newObj = {}
+            newObj['trade_id'] = obj['id']
+            newObj['date'] = obj['time']
+            newObj['price'] = obj['price']
+            newObj['quantity'] = obj['qty']
+            newData.append(newObj)
+        return newData
