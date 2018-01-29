@@ -131,8 +131,8 @@ class Worker:
                          .format(order['order_id'], order['profile'], profile))
             if profit_markup < self._profit_markup:
                 logger.debug("Profit to small, won't cancel order {}".format(order['order_id']))
-                else:
-                    self._cancel_order(order)
+            else:
+                self._cancel_order(order)
 
     def _handle_orders_wait_for_profit(self, wait_orders, open_orders):
         try:
