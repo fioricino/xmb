@@ -111,7 +111,7 @@ def get_stats():
 
 
 if __name__ == '__main__':
-    base_dir = os.path.join('results', 'new_fixstatus')
+    base_dir = os.path.join('results', 'fixarchive')
     os.makedirs(base_dir, exist_ok=True)
     handlers = []
     for last_deals in LAST_DEALS:
@@ -168,7 +168,7 @@ if __name__ == '__main__':
                                                 profit_order_lifetime=profit_lifetime,
                                                 profit_markup=PROFIT_MARKUP, max_profit_orders_down=5,
                                                 max_profit_orders_up=5,
-                                                profit_price_distribution=profit_price_dev,
+                                                profit_price_prev_price_deviation=profit_price_dev,
                                                 reserve_price_distribution=0.002)
                                 worker._get_time = lambda: sim.timestamp
                                 last_stat_timestamp = timestamp

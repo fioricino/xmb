@@ -12,19 +12,18 @@ class Worker:
                  advisor,
                  max_profit_orders_up=5,
                  max_profit_orders_down=5,
-                 min_profit_orders_up=1,
-                 min_profit_orders_down=1,
                  period=1,
                  currency_1='BTC',
                  currency_2='USD',
                  stock_fee=0.002,
                  profit_markup=0.001,
+                 # price deviation to cancel reserve order
                  reserve_price_distribution=0.001,
-                 profit_price_distribution=0.01,
+                 profit_price_prev_price_deviation=0,
                  currency_1_deal_size=0.001,
                  new_order_price_deviation=0.02
-                 , profit_order_lifetime=60, profit_distribution=0.0003):
-        self._profit_distribution = profit_distribution
+                 , profit_order_lifetime=60, profit_price_avg_price_deviation=0.001):
+        self._profit_price_avg_price_deviation = profit_price_avg_price_deviation
         self._profit_order_lifetime = profit_order_lifetime
         self._api = api
         self._storage = storage
@@ -36,12 +35,10 @@ class Worker:
         self._stock_fee = stock_fee
         self._profit_markup = profit_markup
         self._reserve_price_distribution = reserve_price_distribution
-        self._profit_price_distribution = profit_price_distribution
+        self._profit_price_prev_price_deviation = profit_price_prev_price_deviation
         self._currency_1_deal_size = currency_1_deal_size
         self._max_profit_orders_up = max_profit_orders_up
         self._max_profit_orders_down = max_profit_orders_down
-        self._min_profit_orders_up = min_profit_orders_up
-        self._min_profit_orders_down = min_profit_orders_down
         self._new_order_price_deviation = new_order_price_deviation
 
     # TODO move
@@ -127,6 +124,7 @@ class Worker:
                     self._cancel_order(order)
 
         else:
+            #TODO id it required?
             logger.debug('Profile has changed for order {}: {} -> {}'
                          .format(order['order_id'], order['profile'], profile))
             if profit_markup < self._profit_markup:
@@ -340,19 +338,17 @@ class Worker:
             return self._max_profit_orders_down
         raise ValueError('Invalid profile: ' + profile)
 
-    def _get_min_open_profit_orders_limit(self, profile):
-        if profile == 'UP':
-            return self._min_profit_orders_up
-        if profile == 'DOWN':
-            return self._min_profit_orders_down
-        raise ValueError('Invalid profile: ' + profile)
-
     def _recalculate_profit_order_price(self, profit_order):
         profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
-        profit_price = float(profit_order['order_data']['price'])
-        if math.fabs(profit_price - avg_price) > avg_price * self._profit_price_distribution \
-                and int(self._get_time() - profit_order['created']) > self._profit_order_lifetime \
-                and abs(float(profit_order['profit_markup']) - self._profit_markup) > self._profit_distribution \
+        if int(self._get_time() - profit_order['created']) > self._profit_order_lifetime \
                 and float(profit_order['profit_markup']) > self._profit_markup:
-            logger.debug('Profit markup has changed for order {}'.format(profit_order['order_id']))
-            self._cancel_order(profit_order)
+            desired_profit_price = self._calculate_profit_price(float(profit_order['order_data']['quantity']),
+                                                                profit_order['base_order']['order_data'],
+                                                                profit_order['profile'],
+                                                                self._profit_markup)
+            if abs(desired_profit_price - float(profit_order['order_data'][
+                                                    'price'])) / desired_profit_price > self._profit_price_prev_price_deviation \
+                    and abs(
+                                desired_profit_price - avg_price) / desired_profit_price > self._profit_price_avg_price_deviation:
+                logger.debug('Profit markup has changed for order {}'.format(profit_order['order_id']))
+                self._cancel_order(profit_order)
