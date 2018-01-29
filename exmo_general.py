@@ -31,13 +31,13 @@ class Worker:
         else:
             self._period = 1
 
-        if '_currency_1' in kwargs:
-            self._currency_1 = kwargs['_currency_1']
+        if 'currency_1' in kwargs:
+            self._currency_1 = kwargs['currency_1']
         else:
             self._currency_1 = 'BTC'
 
-        if '_currency_2' in kwargs:
-            self._currency_2 = kwargs['_currency_2']
+        if 'currency_2' in kwargs:
+            self._currency_2 = kwargs['currency_2']
         else:
             self._currency_2 = 'USD'
 

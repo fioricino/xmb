@@ -28,16 +28,6 @@ class TrendAnalyzer:
         else:
             self._mean_price_period = 4
 
-        if '_currency_1' in kwargs:
-            self._currency_1 = kwargs['_currency_1']
-        else:
-            self._currency_1 = 'BTC'
-
-        if '_currency_2' in kwargs:
-            self._currency_2 = kwargs['_currency_2']
-        else:
-            self._currency_2 = 'USD'
-
         if 'interpolation_degree' in kwargs:
             self._interpolation_degree = kwargs['interpolation_degree']
         else:
