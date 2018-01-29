@@ -113,9 +113,9 @@ class Worker:
         self._create_profit_order(order)
 
     def _handle_open_reserve_order(self, order):
-        profile, profit_markup, mean_price = self._advisor.get_advice()
+        profile, profit_markup, reserve_markup, mean_price = self._advisor.get_advice()
         if order['profile'] == profile:
-            my_need_price = self._calculate_desired_reserve_price(mean_price, profile)
+            my_need_price = self._calculate_desired_reserve_price(mean_price, profile, reserve_markup)
             if math.fabs(my_need_price - float(order['order_data']['price'])) > float(
                     order['order_data']['price']) * self._reserve_price_distribution:
                 logger.debug('Reserve price has changed for order {} -> {}: {}'
@@ -131,22 +131,28 @@ class Worker:
                          .format(order['order_id'], order['profile'], profile))
             if profit_markup < self._profit_markup:
                 logger.debug("Profit to small, won't cancel order {}".format(order['order_id']))
-            else:
-                self._cancel_order(order)
+                else:
+                    self._cancel_order(order)
 
     def _handle_orders_wait_for_profit(self, wait_orders, open_orders):
         try:
             for order in wait_orders:
-                profit_orders = [o for o in open_orders if o['order_type'] == 'PROFIT'
-                                 and o['base_order']['order_id'] == order['order_id']]
-                if not profit_orders:
-                    self._create_profit_order(order)
-
-                else:
-                    for profit_order in profit_orders:
-                        self._recalculate_profit_order_price(profit_order)
+                self._handle_order_wait_for_profit(open_orders, order)
         except Exception as e:
             logger.exception('Cannot handle orders waiting for profit')
+
+    def _handle_order_wait_for_profit(self, open_orders, order):
+        try:
+            profit_orders = [o for o in open_orders if o['order_type'] == 'PROFIT'
+                             and o['base_order']['order_id'] == order['order_id']]
+            if not profit_orders:
+                self._create_profit_order(order)
+
+            else:
+                for profit_order in profit_orders:
+                    self._recalculate_profit_order_price(profit_order)
+        except Exception as e:
+            logger.exception('Cannot handle order waiting for profit {}'.format(order['order_id']))
 
     def _cancel_order(self, order):
         self._api.cancel_order(order['order_id'])
@@ -154,7 +160,7 @@ class Worker:
 
     def _make_reserve(self):
         try:
-            profile, profit_markup, avg_price = self._advisor.get_advice()
+            profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
             all_orders = self._storage.get_open_orders()
             same_profile_orders = [o for o in all_orders if o['profile'] == profile and o['status'] == 'OPEN']
             if len(same_profile_orders) >= self._get_max_open_profit_orders_limit(profile):
@@ -175,12 +181,12 @@ class Worker:
                     logger.debug('Price deviation with other orders is too small: {} < {}'.format(min_price_diff,
                                                                                                   self._new_order_price_deviation))
                     return
-            self._create_reserve_order(profile, avg_price)
+            self._create_reserve_order(profile, avg_price, reserve_markup)
         except Exception as e:
             logger.exception('Cannot make reserve')
 
-    def _create_reserve_order(self, profile, avg_price):
-        my_need_price = self._calculate_desired_reserve_price(avg_price, profile)
+    def _create_reserve_order(self, profile, avg_price, reserve_markup):
+        my_need_price = self._calculate_desired_reserve_price(avg_price, profile, reserve_markup)
         my_amount = self._calculate_desired_reserve_amount(profile)
         new_order_id = str(self._api.create_order(
             currency_1=self._currency_1,
@@ -222,7 +228,7 @@ class Worker:
                         0.00134345 1.5045
                     """
         # balances = self._api.get_balances()
-        profile, profit_markup, avg_price = self._advisor.get_advice()
+        profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
         base_profile = base_order['profile']
         # if profile != base_profile:
         #     logger.debug('Profile has changed: {}->{}. Will not create profit order for reserve order {}'
@@ -236,6 +242,7 @@ class Worker:
         quantity = self._calculate_profit_quantity(base_order['order_data'], base_profile, order_profit_markup)
 
         price = self._calculate_profit_price(quantity, base_order['order_data'], base_profile, profit_markup)
+        logger.info('Create new profit order for base order: {}'.format(base_order['order_id']))
         new_order_id = str(self._api.create_order(
             currency_1=self._currency_1,
             currency_2=self._currency_2,
@@ -291,13 +298,13 @@ class Worker:
             return self._currency_1_deal_size
         raise ValueError('Unrecognized profile: ' + profile)
 
-    def _calculate_desired_reserve_price(self, avg_price, profile):
+    def _calculate_desired_reserve_price(self, avg_price, profile, reserve_markup):
         if profile == 'UP':
             # хотим купить подешевле
-            return avg_price / (1 + self._stock_fee)
+            return avg_price * (1 + reserve_markup)
         if profile == 'DOWN':
             # хотим продать подороже
-            return avg_price / (1 - self._stock_fee)
+            return avg_price * (1 + reserve_markup)
         raise ValueError('Unrecognized profile: ' + profile)
 
     def _calculate_profit_quantity(self, base_order, profile, profit_markup):
@@ -336,10 +343,11 @@ class Worker:
         raise ValueError('Invalid profile: ' + profile)
 
     def _recalculate_profit_order_price(self, profit_order):
-        profile, profit_markup, avg_price = self._advisor.get_advice()
+        profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
         profit_price = float(profit_order['order_data']['price'])
         if math.fabs(profit_price - avg_price) > avg_price * self._profit_price_distribution \
-                and int(profit_order['created']) - self._get_time() > self._profit_order_lifetime \
-                and abs(float(profit_order['profit_markup']) - self._profit_markup) > self._profit_distribution:
+                and int(self._get_time() - profit_order['created']) > self._profit_order_lifetime \
+                and abs(float(profit_order['profit_markup']) - self._profit_markup) > self._profit_distribution \
+                and float(profit_order['profit_markup']) > self._profit_markup:
             logger.debug('Profit markup has changed for order {}'.format(profit_order['order_id']))
             self._cancel_order(profit_order)

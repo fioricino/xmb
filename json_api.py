@@ -16,7 +16,7 @@ class JsonStorage:
         logger.debug('Archive order %s with status %s', order_id, status)
         order_to_store = self.orders[order_id]
         order_to_store['status'] = status
-        if order_to_store['order_type'] == 'PROFIT' and status == 'COMPLETED':
+        if order_to_store['order_type'] == 'PROFIT' and status == 'COMPLETED' or order_to_store['status'] == 'CANCELED':
             order_to_store['completed'] = completed
         self.save_to_disk(order_to_store, os.path.join(self._archive_folder, order_id + '.json'))
         self.orders.pop(order_id)

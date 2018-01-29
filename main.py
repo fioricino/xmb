@@ -54,7 +54,7 @@ CURRENCY_1 = 'BTC'
 CURRENCY_1_DEAL_SIZE = 0.001
 CURRENCY_2 = 'USD'
 AVG_PRICE_PERIOD = 4
-RESERVE_PRICE_DISTRIBUTION = 0.001
+RESERVE_PRICE_DISTRIBUTION = 0.002
 PROFIT_MARKUP = 0.001
 
 if __name__ == '__main__':
@@ -64,7 +64,8 @@ if __name__ == '__main__':
     storage = JsonStorage(order_file=os.path.join('real_run', 'orders.json'),
                           archive_folder=os.path.join('real_run', 'archive'))
 
-    trend_analyzer = TrendAnalyzer(rolling_window=6, profit_multiplier=64, mean_price_period=4, profit_free_weight=0)
+    trend_analyzer = TrendAnalyzer(rolling_window=6, profit_multiplier=64, mean_price_period=4,
+                                   profit_free_weight=0.0008)
 
     advisor = BackgroundStatAdvisor(trend_analyzer, exmo_public_api, period=1)
     worker = Worker(exmo_api,
@@ -73,6 +74,9 @@ if __name__ == '__main__':
                     period=PERIOD,
                     reserve_price_distribution=RESERVE_PRICE_DISTRIBUTION,
                     currency_1_deal_size=CURRENCY_1_DEAL_SIZE,
-                    profit_markup=PROFIT_MARKUP, max_profit_orders_up=1, max_profit_orders_down=1)
+                    profit_markup=PROFIT_MARKUP,
+                    max_profit_orders_up=2,
+                    max_profit_orders_down=2,
+                    new_order_price_deviation=0.001)
     t = Thread(target=worker.run)
     t.run()

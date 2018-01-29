@@ -13,7 +13,7 @@ class TrendAnalyzer:
     def __init__(self, rolling_window, profit_multiplier, mean_price_period,
                  interpolation_degree=20,
                  currency_1='BTC', currency_2='USD',
-                 stock_time_offset=0, profit_free_weight=0):
+                 stock_time_offset=0, profit_free_weight=0, reserve_multiplier=0):
         warnings.simplefilter('ignore', np.RankWarning)
         self._interpolation_degree = interpolation_degree
         self._currency_1 = currency_1
@@ -24,6 +24,7 @@ class TrendAnalyzer:
         self._profit_multiplier = profit_multiplier
         self._profit_free_weight = profit_free_weight
         self._mean_price_period = mean_price_period
+        self._reserve_multiplier = reserve_multiplier
 
     def _get_prices_for_period(self, deals):
         c = defaultdict(list)
@@ -71,29 +72,31 @@ class TrendAnalyzer:
         return new_func, step, x_lin
 
     def get_profile(self, trades):
-        last_deals = self._get_prices_for_period(trades)
-        derivative_func = self._get_derivative_func(last_deals)
-        index = -1
-        last_derivative = derivative_func.iloc[index]
-        if np.math.isnan(last_derivative):
-            return None, None, None
-        profit_markup = abs(self._profit_multiplier * last_derivative) + self._profit_free_weight
-        period = self._mean_price_period
-        mean_price = self._calculate_mean_price(trades, period)
-        tries_count = 0
-        while mean_price is None and tries_count < 10:
-            period *= 2
+        try:
+            last_deals = self._get_prices_for_period(trades)
+            derivative_func = self._get_derivative_func(last_deals)
+            index = -1
+            last_derivative = derivative_func.iloc[index]
+            profit_markup = abs(self._profit_multiplier * last_derivative) + self._profit_free_weight
+            reserve_markup = abs(self._reserve_multiplier * last_derivative)
+            period = self._mean_price_period
             mean_price = self._calculate_mean_price(trades, period)
-        if mean_price is None:
-            raise ValueError('Cannot calculate mean price')
-        logger.debug('Deal time: {}\nDeal id: {}\nLast derivative: {}\nProfit markup: {}\nMean price: {}'.format(
-            time.ctime(int(trades[-1]['date'])), trades[-1]['trade_id'], last_derivative, profit_markup, mean_price
-        ))
+            tries_count = 0
+            while mean_price is None and tries_count < 10:
+                period *= 2
+                mean_price = self._calculate_mean_price(trades, period)
+            if mean_price is None:
+                raise ValueError('Cannot calculate mean price')
+            logger.debug('Deal time: {}\nDeal id: {}\nLast derivative: {}\nProfit markup: {}\nMean price: {}'.format(
+                time.ctime(int(trades[-1]['date'])), trades[-1]['trade_id'], last_derivative, profit_markup, mean_price
+            ))
 
-        if last_derivative >= 0:
-            return 'UP', profit_markup, mean_price
-        if last_derivative < 0:
-            return 'DOWN', profit_markup, mean_price
+            if last_derivative >= 0:
+                return 'UP', profit_markup, reserve_markup, mean_price
+            if last_derivative < 0:
+                return 'DOWN', profit_markup, reserve_markup, mean_price
+        except:
+            return None, None, None, None
 
     def _calculate_mean_price(self, deals, mean_price_period):
         prices = []
