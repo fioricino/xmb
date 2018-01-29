@@ -43,7 +43,6 @@ class BinanceApi:
             url = "/api/" + API_VERSION_3 + "/" + 'allOrders' \
                   + '?symbol=' + currency_1 + currency_2 + '&timestamp=' + str(timestamp)
             obj = BinanceApi._call_binance_api(url,'GET',symbol=currency_1+currency_2, timestamp=timestamp)
-            print(obj)
             newObj = []
             for order in obj:
                 if order['status'] is 'CANCELED':
@@ -83,7 +82,7 @@ class BinanceApi:
     def create_order(self, currency_1, currency_2, quantity, price, side):
         logger.info('Create %s order (quantity=%s, price=%s)', side, quantity, price)
         timestamp = BinanceApi._calculateTimestamp()
-        url = "/api/" + API_VERSION_3 + "/" + 'order/test'
+        url = "/api/" + API_VERSION_3 + "/" + 'order'
         return BinanceApi._call_binance_api(
             url, http_method='POST',
             symbol=currency_1 + currency_2,
