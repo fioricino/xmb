@@ -48,6 +48,35 @@ class BinanceApi:
         except KeyError:
             return []
 
+
+    def is_order_partially_completed(self, currency_1, currency_2, order_id):
+        try:
+            timestamp = int(round(time.time() * 1000))
+            url = "/api/" + API_VERSION + "/" + 'order' \
+                  + '?orderId=' + str(order_id) + '&symbol=' + currency_1 + currency_2 + '&timestamp=' + str(timestamp)
+            BinanceApi._call_binance_api(url, 'GET', symbol=currency_1 + currency_2, orderId=order_id,
+                                                  timestamp=timestamp)
+        except Exception as e:
+            if 'Error 50304' in str(e):
+                return False
+            else:
+                raise e
+        return True
+
+    # TODO: fix '{"code":-1101,"msg":"Duplicate values for a parameter detected."}'
+    def cancel_order(self, currency_1, currency_2, order_id):
+        logger.info('Cancel order %s', order_id)
+        timestamp = int(round(time.time() * 1000))
+        url = "/api/" + API_VERSION + "/" + 'order' \
+              + '?orderId=' + str(order_id) + '&symbol=' + currency_1 + currency_2 + '&timestamp=' + str(timestamp)
+        return BinanceApi._call_binance_api(url, 'DELETE', symbol=currency_1 + currency_2, orderId=order_id,
+                                     timestamp=timestamp)
+
+    def get_balances(self):
+        timestamp = int(round(time.time() * 1000))
+        url = "/api/" + API_VERSION + "/" + 'account'+ '?timestamp=' + str(timestamp)
+        return BinanceApi._call_binance_api(url, 'GET', timestamp=timestamp)['balances']
+
     # def prices(self):
     #     BinanceApi._call_binance_api("ticker/allPrices")
 
@@ -83,41 +112,9 @@ class BinanceApi:
             logger.debug('Received response: {}'.format(response))
             if 'error' in obj and obj['error']:
                 raise ApiError(obj['error'])
-            if 'code' in obj and obj['code']:
-                raise ApiError(obj['code'],obj['msg'])
+            # if 'code' in obj and obj['code']:
+            #     raise ApiError(obj['code'],obj['msg'])
             print(obj)
             return obj
-            # return [
-            #     {
-            #         "symbol": "LTCBTC",
-            #         "orderId": 1,
-            #         "clientOrderId": "myOrder1",
-            #         "price": "0.1",
-            #         "origQty": "1.0",
-            #         "executedQty": "0.0",
-            #         "status": "NEW",
-            #         "timeInForce": "GTC",
-            #         "type": "LIMIT",
-            #         "side": "BUY",
-            #         "stopPrice": "0.0",
-            #         "icebergQty": "0.0",
-            #         "time": 1499827319559
-            #     },
-            #     {
-            #         "symbol": "LTCBTC",
-            #         "orderId": 1,
-            #         "clientOrderId": "myOrder1",
-            #         "price": "0.1",
-            #         "origQty": "1.0",
-            #         "executedQty": "0.0",
-            #         "status": "CANCELED",
-            #         "timeInForce": "GTC",
-            #         "type": "LIMIT",
-            #         "side": "BUY",
-            #         "stopPrice": "0.0",
-            #         "icebergQty": "0.0",
-            #         "time": 1499827319559
-            #     }
-            # ]
         except json.decoder.JSONDecodeError:
             raise ApiError('Ошибка анализа возвращаемых данных, получена строка', response)
