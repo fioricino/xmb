@@ -20,6 +20,7 @@ if __name__ == '__main__':
 
     # api.prices()
     #api.get_open_orders('LTC','BTC')
+    # for x in range(1,10):
     api.get_canceled_orders('LTC','BTC')
 
 # def prices(self):

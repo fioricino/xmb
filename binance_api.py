@@ -3,6 +3,7 @@ import http.client
 import json
 import logging
 import urllib.parse
+from collections import OrderedDict
 
 import requests
 import hmac
@@ -14,8 +15,8 @@ from exceptions import ApiError
 API_URL = 'api.binance.com'
 API_VERSION = 'v3'
 
-API_KEY = 'HegeFPcysaLj8SMJYvEt5oE0gbJucrymRo91bnw8c5xRQ0pGotwn7Y58EPlF4KrZ'
-API_SECRET = b'htTDnjZNJUroN7WydpP7OdKaQd95CywKHsWUMGEkVLuR8SK3VZJOHreOp2ilp0kM'
+API_KEY = 'Gowa5xGG3PdCWa5ciCrZeTPXGqrUNy7Qh4MKHXiKUGMvaLM4GAhgIGJlbaFIZVlV'
+API_SECRET = 'avIfwd471KlubRpXNHyV2lH9cgRZLfgGngNvBCx2SyzEDVlTbhGqF2vQqiATGUfc'
 
 logger = logging.getLogger('xmb')
 
@@ -34,10 +35,10 @@ class BinanceApi:
 
     def get_canceled_orders(self, currency_1, currency_2):
         try:
-            timestamp = int(time.time() * 1000)
+            timestamp = int(round(time.time() * 1000))
             url = "/api/" + API_VERSION + "/" + 'allOrders' \
                   + '?symbol=' + currency_1 + currency_2 + '&timestamp=' + str(timestamp)
-            obj = BinanceApi._call_binance_api(url,'GET',timestamp=timestamp,symbol=currency_1+currency_2)
+            obj = BinanceApi._call_binance_api(url,'GET',symbol=currency_1+currency_2, timestamp=timestamp)
             print(obj)
             newObj = []
             for order in obj:
@@ -56,12 +57,13 @@ class BinanceApi:
         logger.debug('Call Binance api. Url {}. Payload: {}'.format(url, kwargs))
 
         if kwargs:
-             payload = kwargs
+             payload = sorted(kwargs.items())
         payload = urllib.parse.urlencode(payload)
 
-        H = hmac.new(key=API_SECRET, digestmod=hashlib.sha256)
+        H = hmac.new(key=API_SECRET.encode('utf-8'), digestmod=hashlib.sha256)
         H.update(payload.encode('utf-8'))
         sign = H.hexdigest()
+        # sign = hmac.new(API_SECRET.encode('utf-8'), payload.encode('utf-8'), digestmod=hashlib.sha256).hexdigest()
 
         # url = "/api/" + API_VERSION + "/" + api_method
         # if http_method == 'GET':
