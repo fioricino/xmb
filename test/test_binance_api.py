@@ -25,6 +25,7 @@ if __name__ == '__main__':
     # api.is_order_partially_completed('LTC','BTC',1)
     api.cancel_order('LTC','BTC',2)
     # api.get_balances()
+    # api.create_order('BTC','USDT',0.01,12000,'BUY')
 
 # def prices(self):
 #     """Get latest prices for all symbols."""

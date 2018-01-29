@@ -63,12 +63,10 @@ class BinanceApi:
                 raise e
         return True
 
-    # TODO: fix '{"code":-1101,"msg":"Duplicate values for a parameter detected."}'
     def cancel_order(self, currency_1, currency_2, order_id):
         logger.info('Cancel order %s', order_id)
         timestamp = int(round(time.time() * 1000))
-        url = "/api/" + API_VERSION + "/" + 'order' \
-              + '?orderId=' + str(order_id) + '&symbol=' + currency_1 + currency_2 + '&timestamp=' + str(timestamp)
+        url = "/api/" + API_VERSION + "/" + 'order'
         return BinanceApi._call_binance_api(url, 'DELETE', symbol=currency_1 + currency_2, orderId=order_id,
                                      timestamp=timestamp)
 
@@ -76,6 +74,22 @@ class BinanceApi:
         timestamp = int(round(time.time() * 1000))
         url = "/api/" + API_VERSION + "/" + 'account'+ '?timestamp=' + str(timestamp)
         return BinanceApi._call_binance_api(url, 'GET', timestamp=timestamp)['balances']
+
+
+    def create_order(self, currency_1, currency_2, quantity, price, side):
+        logger.info('Create %s order (quantity=%s, price=%s)', side, quantity, price)
+        timestamp = int(round(time.time() * 1000))
+        url = "/api/" + API_VERSION + "/" + 'order/test'
+        return BinanceApi._call_binance_api(
+            url, http_method='POST',
+            symbol=currency_1 + currency_2,
+            quantity=quantity,
+            price=price,
+            side=side,
+            type='LIMIT',
+            timestamp=timestamp,
+            timeInForce='GTC'
+        )['order_id']
 
     # def prices(self):
     #     BinanceApi._call_binance_api("ticker/allPrices")
@@ -89,15 +103,18 @@ class BinanceApi:
              payload = sorted(kwargs.items())
         payload = urllib.parse.urlencode(payload)
 
-        H = hmac.new(key=API_SECRET.encode('utf-8'), digestmod=hashlib.sha256)
-        H.update(payload.encode('utf-8'))
-        sign = H.hexdigest()
-        # sign = hmac.new(API_SECRET.encode('utf-8'), payload.encode('utf-8'), digestmod=hashlib.sha256).hexdigest()
+        # H = hmac.new(key=API_SECRET.encode('utf-8'), digestmod=hashlib.sha256)
+        # H.update(payload.encode('utf-8'))
+        # sign = H.hexdigest()
+        sign = hmac.new(API_SECRET.encode('utf-8'), payload.encode('utf-8'), digestmod=hashlib.sha256).hexdigest()
+
+        payload += '&signature=' + sign
 
         # url = "/api/" + API_VERSION + "/" + api_method
         # if http_method == 'GET':
         #      url += '?symbol='+symbol + '&timestamp='+str(timestamp)  +'&signature='+sign
-        url+= '&signature='+sign
+        if http_method == 'GET':
+            url+= '&signature='+sign
 
         headers = {"Content-type": "application/x-www-form-urlencoded",
                    "X-MBX-APIKEY": API_KEY,
@@ -114,7 +131,7 @@ class BinanceApi:
                 raise ApiError(obj['error'])
             # if 'code' in obj and obj['code']:
             #     raise ApiError(obj['code'],obj['msg'])
-            print(obj)
+            print(obj['orderId'])
             return obj
         except json.decoder.JSONDecodeError:
             raise ApiError('Ошибка анализа возвращаемых данных, получена строка', response)
