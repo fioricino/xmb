@@ -1,3 +1,4 @@
+import itertools
 import json
 import logging
 import os
@@ -45,15 +46,6 @@ def create_handlers(dr):
     logger.addHandler(error_handler)
     return [debug_handler, info_handler, error_handler]
 
-
-INITIAL_BTC_BALANCE = 0.006
-INITIAL_USD_BALANCE = 70
-ROLLING_WINDOW = 6
-PROFIT_MULTIPLIER = 64
-MEAN_PRICE_PERIOD = 4
-PROFIT_ORDER_PRICE_DEVIATION = 0.025
-PROFIT_MARKUP = 0.001
-
 class InstantAdvisor:
     def __init__(self, deal_provider, trend_analyzer):
         self._ta = trend_analyzer
@@ -72,13 +64,34 @@ class InstantAdvisor:
             self.last_update_ts = timestamp
 
 
-PROFIT_MULTIPLIERS = [96]
-PROFIT_LIFETIMES = [64]
-PROFIT_PRICE_DEVIATIONS = [0.001]
-PROFIT_FREE_WEIGHTS = [0.0008]
-NEW_ORDER_PRICE_DISTRIBUTIONS = [0.005]
-LAST_DEALS = [100]
-ROLLING_WINDOWS = [6]
+args = {
+    'profit_price_avg_price_deviation': [0.001, 0.002],
+    'profit_order_lifetime': [64],
+    'period': [1],
+    'currency_1': ['BTC'],
+    'currency_2': ['USD'],
+    'stock_fee': [0.002],
+    'profit_markup': [0.001],
+    'reserve_price_avg_price_deviation': [0.002],
+    'profit_price_prev_price_deviation': [0.0001],
+    'currency_1_deal_size': [0.001],
+    'max_profit_orders_up': [3],
+    'max_profit_orders_down': [3],
+    'same_profile_order_price_deviation': [0.01],
+
+    'rolling_window': [6],
+    'profit_multiplier': [64],
+    'mean_price_period': [4],
+    'interpolation_degree': [20],
+    'profit_free_weight': [0.0008],
+    'reserve_multiplier': [0]
+}
+
+d = [list(zip(itertools.repeat(arg, len(values)), values)) for arg, values in args.items()]
+product = list(itertools.product(*d))
+configs = [dict(cfg) for cfg in product]
+for cfg in configs:
+    print(cfg)
 
 
 def get_theor_balances(storage, market, stock_fee):
