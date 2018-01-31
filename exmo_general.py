@@ -111,8 +111,8 @@ class Worker:
     def _handle_open_orders(self, open_orders):
 
         try:
-            market_open_orders = [order['order_id'] for order in
-                              self._api.get_open_orders(self._currency_1, self._currency_2)]
+            market_open_orders = [str(order['order_id']) for order in
+                                  self._api.get_open_orders(self._currency_1, self._currency_2)]
             for order in open_orders:
                 self._handle_open_order(market_open_orders, order)
         except Exception as e:
@@ -120,7 +120,7 @@ class Worker:
 
     def _handle_open_order(self, market_open_orders, order):
         try:
-            if order['order_id'] in market_open_orders:
+            if str(order['order_id']) in market_open_orders:
                 # order still open
                 if order['order_type'] == 'RESERVE':
                     # open profit orders can be ignored

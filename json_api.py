@@ -14,19 +14,19 @@ class JsonStorage:
 
     def delete(self, order_id, status, completed):
         logger.debug('Archive order {} with status {}'.format(order_id, status))
-        order_to_store = self.orders[order_id]
+        order_to_store = self.orders[str(order_id)]
         order_to_store['status'] = status
         if order_to_store['order_type'] == 'PROFIT' and status == 'COMPLETED' or order_to_store['status'] == 'CANCELED':
             order_to_store['completed'] = completed
         self.save_to_disk(order_to_store, os.path.join(self._archive_folder, str(order_id) + '.json'))
-        self.orders.pop(order_id)
+        self.orders.pop(str(order_id))
         self.save_orders()
 
     def cancel_order(self, order_id, canceled):
-        self.delete(order_id, 'CANCELED', canceled)
+        self.delete(str(order_id), 'CANCELED', canceled)
 
     def update_order_status(self, order_id, status, timestamp):
-        order = self.orders[order_id]
+        order = self.orders[str(order_id)]
         order['status'] = status
         if status == 'WAIT_FOR_PROFIT':
             order['completed'] = timestamp
@@ -37,7 +37,7 @@ class JsonStorage:
 
     def create_order(self, order, profile, order_type, created, base_order=None, profit_markup=None):
         order_to_store = {
-            'order_id': order['order_id'],
+            'order_id': str(order['order_id']),
             'order_data': order,
             'profile': profile,
             'order_type': order_type,
@@ -47,7 +47,7 @@ class JsonStorage:
             'created': created
         }
         logger.debug('Save order: %s', order_to_store)
-        self.orders[order['order_id']] = order_to_store
+        self.orders[str(order['order_id'])] = order_to_store
         self.save_orders()
         return order_to_store
 

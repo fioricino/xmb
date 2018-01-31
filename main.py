@@ -52,8 +52,8 @@ args = {
     'reserve_price_avg_price_deviation': 0.002,
     'profit_price_prev_price_deviation': 0.0001,
     'currency_1_deal_size': 0.001,
-    'max_profit_orders_up': 5,
-    'max_profit_orders_down': 5,
+    'max_profit_orders_up': 6,
+    'max_profit_orders_down': 6,
     'same_profile_order_price_deviation': 0.01
 }
 
