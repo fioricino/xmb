@@ -366,8 +366,7 @@ class Worker:
         amount_in_order = float(base_order['quantity'])
         if profile == 'UP':
             # Комиссия была снята в 1 валюте, считаем от цены ордера
-            return (
-                amount_in_order * price_in_order * (1 + profit_markup) / quantity)
+            return amount_in_order * price_in_order * (1 + self._profit_markup) / (quantity * (1 - self._stock_fee))
         if profile == 'DOWN':
             return (amount_in_order * price_in_order * (1 - self._stock_fee)) / quantity
         raise ValueError('Unrecognized profile: ' + profile)
