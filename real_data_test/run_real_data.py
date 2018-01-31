@@ -82,7 +82,7 @@ def run(cfg, base_folder, handlers):
     handlers = create_handlers(logs_dir)
     archive_dir = os.path.join(run_folder, 'archive')
     os.makedirs(archive_dir)
-    sim = MarketSimulator('deals_2day', initial_btc_balance=cfg['max_profit_orders_down'] * 0.0011,
+    sim = MarketSimulator('deals_5day', initial_btc_balance=cfg['max_profit_orders_down'] * 0.0011,
                           initial_usd_balance=cfg['max_profit_orders_up'] * 13,
                           stock_fee=cfg['stock_fee'], last_deals=cfg['last_deals'])
     storage = JsonStorage(os.path.join(run_folder, 'orders.json'), archive_dir)
@@ -98,14 +98,17 @@ def run(cfg, base_folder, handlers):
     worker._get_time = lambda: sim.timestamp
     last_stat_timestamp = timestamp
     while timestamp < last_timestamp:
-        timestamp += 1
-        logger.debug('Update timestamp: {}'.format(timestamp))
-        sim.update_timestamp(timestamp)
-        advisor.update_timestamp(timestamp)
-        worker.main_flow()
-        if timestamp - last_stat_timestamp >= 1000:
-            logger.info('Stats: {}'.format(get_stats(sim, storage)))
-            last_stat_timestamp = timestamp
+        try:
+            timestamp += 1
+            logger.debug('Update timestamp: {}'.format(timestamp))
+            sim.update_timestamp(timestamp)
+            advisor.update_timestamp(timestamp)
+            worker.main_flow()
+            if timestamp - last_stat_timestamp >= 1000:
+                logger.info('Stats: {}'.format(get_stats(sim, storage)))
+                last_stat_timestamp = timestamp
+        except:
+            break
 
     stat = get_stats(sim, storage)
     logger.info('Finished.\n{}'.format(stat))
@@ -149,25 +152,25 @@ class InstantAdvisor:
 
 args = {
     'profit_price_avg_price_deviation': [0.001],
-    'profit_order_lifetime': [64, 96],
+    'profit_order_lifetime': [64],
     'period': [1],
     'currency_1': ['BTC'],
     'currency_2': ['USD'],
     'stock_fee': [0.002],
-    'profit_markup': [0.001, 0.005],
+    'profit_markup': [0.001],
     'reserve_price_avg_price_deviation': [0.002],
     'profit_price_prev_price_deviation': [0.0001],
     'currency_1_deal_size': [0.001],
     'max_profit_orders_up': [10],
     'max_profit_orders_down': [10],
-    'same_profile_order_price_deviation': [0.005],
+    'same_profile_order_price_deviation': [0.01],
 
     'rolling_window': [6],
-    'profit_multiplier': [16, 32, 64, 96],
+    'profit_multiplier': [96],
     'mean_price_period': [4],
     'interpolation_degree': [20],
-    'profit_free_weight': [0.0009, 0.0008, 0.0006, 0.0004, 0.0002],
-    'reserve_multiplier': [0, 2],
+    'profit_free_weight': [0.0008],
+    'reserve_multiplier': [0],
 
     'last_deals': [100]
 }
@@ -178,7 +181,7 @@ configs = [dict(cfg) for cfg in product]
 handlers = []
 for cfg in configs:
     try:
-        handlers = run(cfg, 'test', handlers)
+        handlers = run(cfg, 'test_5day', handlers)
     except:
         logger.exception('Error')
 

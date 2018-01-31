@@ -358,7 +358,7 @@ class Worker:
             return max(self._currency_1_deal_size, amount_in_order * (1 - self._stock_fee))
         elif profile == 'DOWN':
             # Комиссия была в долларах
-            return max(self._currency_1_deal_size, amount_in_order * (1 + profit_markup) / (1 - self._stock_fee))
+            return (max(self._currency_1_deal_size, amount_in_order * (1 + profit_markup)) / (1 - self._stock_fee))
         raise ValueError('Unrecognized profile: ' + profile)
 
     def _calculate_profit_price(self, quantity, base_order, profile, profit_markup):
@@ -367,7 +367,7 @@ class Worker:
         if profile == 'UP':
             # Комиссия была снята в 1 валюте, считаем от цены ордера
             return (
-                amount_in_order * price_in_order * (1 + profit_markup) / ((1 - self._stock_fee) * quantity))
+                amount_in_order * price_in_order * (1 + profit_markup) / quantity)
         if profile == 'DOWN':
             return (amount_in_order * price_in_order * (1 - self._stock_fee)) / quantity
         raise ValueError('Unrecognized profile: ' + profile)
