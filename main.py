@@ -1,15 +1,14 @@
+import argparse
 import logging
 import os
+import sys
 from logging.handlers import RotatingFileHandler
 from threading import Thread
-
-import sys
 
 from advisor import BackgroundStatAdvisor
 from exmo_api import ExmoApi
 from exmo_api_proxy import ExmoApiProxy
 from exmo_general import Worker
-import argparse
 
 # run period in seconds
 from json_api import JsonStorage
@@ -40,7 +39,7 @@ def create_handlers(dr):
     return [debug_handler, info_handler, error_handler]
 
 
-create_handlers('logs')
+create_handlers(os.path.join('real_run', 'logs'))
 
 args = {
     'profit_price_avg_price_deviation': 0.001,
@@ -72,11 +71,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-k', '--key', type=str, help='Api key')
     parser.add_argument('-s', '--secret', type=str, help='Api secret')
-    args = parser.parse_args(sys.argv[1:])
+    sysargs = parser.parse_args(sys.argv[1:])
 
-    args = parser.parse_args()
-
-    exmo_api = ExmoApi(args.key, args.secret)
+    exmo_api = ExmoApi(sysargs.key, sysargs.secret)
     exmo_public_api = ExmoApiProxy(proxy_host='localhost', proxy_port=9050)
 
     storage = JsonStorage(order_file=os.path.join('real_run', 'orders.json'),
