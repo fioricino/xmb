@@ -21,13 +21,13 @@ if __name__ == '__main__':
     # api.prices()
     # api.get_open_orders('ETC','ETH')
     # for x in range(1,10):
-    # api.get_canceled_orders('LTC','BTC')
-    # api.is_order_partially_completed('ETC','ETH',7117404)
-    # api.cancel_order('ETC','ETH',7119929)
+    # api.get_canceled_orders('ETC','ETH')
+    # api.is_order_partially_completed(7279440)
+    # api.cancel_order(7279440)
     # api.get_balances()
     # api.create_order('ETC','ETH',0.08,0.5,'SELL')
-    api.get_trades('ETC','ETH')
-    # api.get_user_trades('BTC','USDT',0,500)
+    # api.get_trades('ETC','ETH')
+    # api.get_user_trades('ETC','ETH',0,500)
 
 # def prices(self):
 #     """Get latest prices for all symbols."""
