@@ -46,33 +46,45 @@ def create_handlers(dr):
 
 
 create_handlers(os.path.join('real_run', 'logs'))
+args = {
+    'profit_price_avg_price_deviation': 0.001,
+    'profit_order_lifetime': 64,
+    'period': 1,
+    'currency_1': 'BTC',
+    'currency_2': 'USD',
+    'stock_fee': 0.002,
+    'profit_markup': 0.001,
+    'reserve_price_avg_price_deviation': 0.002,
+    'profit_price_prev_price_deviation': 0.0001,
+    'currency_1_deal_size': 0.001,
+    'max_profit_orders_up': 3,
+    'max_profit_orders_down': 3,
+    'same_profile_order_price_deviation': 0.01
+}
 
+stat_args = {
+    'rolling_window': 6,
+    'profit_multiplier': 64,
+    'mean_price_period': 4,
+    'interpolation_degree': 20,
+    'profit_free_weight': 0.0008,
+    'reserve_multiplier': 0,
+}
 
-
-PERIOD = 1
-CURRENCY_1 = 'BTC'
-CURRENCY_1_DEAL_SIZE = 0.001
-CURRENCY_2 = 'USD'
-AVG_PRICE_PERIOD = 4
-RESERVE_PRICE_DISTRIBUTION = 0.001
-PROFIT_MARKUP = 0.001
 
 if __name__ == '__main__':
-    # logging.basicConfig(level=logging.DEBUG)
     exmo_api = ExmoApi()
     exmo_public_api = ExmoApiProxy(proxy_host='localhost', proxy_port=9050)
+
     storage = JsonStorage(order_file=os.path.join('real_run', 'orders.json'),
                           archive_folder=os.path.join('real_run', 'archive'))
 
-    trend_analyzer = TrendAnalyzer(rolling_window=6, profit_multiplier=64, mean_price_period=4, profit_free_weight=0)
+    trend_analyzer = TrendAnalyzer(**stat_args)
 
     advisor = BackgroundStatAdvisor(trend_analyzer, exmo_public_api, period=1)
     worker = Worker(exmo_api,
                     storage,
                     advisor,
-                    period=PERIOD,
-                    reserve_price_distribution=RESERVE_PRICE_DISTRIBUTION,
-                    currency_1_deal_size=CURRENCY_1_DEAL_SIZE,
-                    profit_markup=PROFIT_MARKUP, max_profit_orders_up=1, max_profit_orders_down=1)
+                    **args)
     t = Thread(target=worker.run)
     t.run()

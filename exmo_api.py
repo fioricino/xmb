@@ -51,18 +51,18 @@ class ExmoApi:
 
     def create_order(self, currency_1, currency_2, quantity, price, type):
         logger.info('Create %s order (quantity=%s, price=%s)', type, quantity, price)
-        return ExmoApi._call_api(
+        return str(ExmoApi._call_api(
             'order_create',
             pair=currency_1 + '_' + currency_2,
             quantity=quantity,
             price=price,
             type=type
-        )['order_id']
+        )['order_id'])
 
     def get_trades(self, currency_1, currency_2):
         return ExmoApi._call_api('trades', pair=currency_1 + '_' + currency_2)[currency_1 + '_' + currency_2]
 
-    def get_user_trades(self, currency_1, currency_2, offset=0, limit=1000):
+    def get_user_trades(self, currency_1, currency_2, offset=0, limit=100):
         return ExmoApi._call_api('user_trades', pair=currency_1 + '_' + currency_2, offset=offset, limit=limit)[
             currency_1 + '_' + currency_2]
 

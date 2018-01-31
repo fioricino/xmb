@@ -108,7 +108,7 @@ class TestWorker(unittest.TestCase):
                         'profile': 'UP'}
         stored_order_s = json.dumps(stored_order)
         storage.orders[order_id] = stored_order
-        worker = Worker(api, storage, Advisor(), new_order_price_deviation=0.2)
+        worker = Worker(api, storage, Advisor(), same_profile_order_price_deviation=0.2)
         worker.main_flow()
 
         self.assertEqual(1, api.get_open_orders_called)
@@ -138,7 +138,7 @@ class TestWorker(unittest.TestCase):
                         'profile': 'UP'}
         stored_order_s = json.dumps(stored_order)
         storage.orders[order_id] = stored_order
-        worker = Worker(api, storage, Advisor(), new_order_price_deviation=0.1, profit_markup=0.1)
+        worker = Worker(api, storage, Advisor(), same_profile_order_price_deviation=0.1, profit_markup=0.1)
         worker.main_flow()
 
         self.assertEqual(1, api.get_open_orders_called)
@@ -187,7 +187,8 @@ class TestWorker(unittest.TestCase):
                         'profile': 'UP'}
         stored_order_s = json.dumps(stored_order)
         storage.orders[order_id] = stored_order
-        worker = Worker(api, storage, Advisor(), new_order_price_deviation=0.1, profit_markup=0.1, stock_fee=0.2,
+        worker = Worker(api, storage, Advisor(), same_profile_order_price_deviation=0.1, profit_markup=0.1,
+                        stock_fee=0.2,
                         currency_1_deal_size=4)
         worker.main_flow()
 
@@ -390,7 +391,7 @@ class TestWorker(unittest.TestCase):
         stored_order_s = json.dumps(stored_order)
         storage.orders[mock_order_id] = stored_order
 
-        worker = Worker(api, storage, profile='UP', reserve_price_distribution=0.1, order_life_time=60)
+        worker = Worker(api, storage, profile='UP', reserve_price_avg_price_deviation=0.1, order_life_time=60)
         worker.get_desired_reserve_price = get_desired_reserve_price
         self.assertRaises(Worker.ScriptQuitCondition, worker.main_flow)
 
@@ -430,7 +431,7 @@ class TestWorker(unittest.TestCase):
         stored_order_s = json.dumps(stored_order)
         storage.orders[mock_order_id] = stored_order
 
-        worker = Worker(api, storage, profile='DOWN', reserve_price_distribution=0.1, order_life_time=60)
+        worker = Worker(api, storage, profile='DOWN', reserve_price_avg_price_deviation=0.1, order_life_time=60)
         worker.get_desired_reserve_price = get_desired_reserve_price
         self.assertRaises(Worker.ScriptQuitCondition, worker.main_flow)
 
@@ -474,7 +475,7 @@ class TestWorker(unittest.TestCase):
         stored_order = {'status': 'OPEN', 'order_data': order, 'order_type': 'RESERVE', 'profile': 'UP'}
         storage.orders[mock_order_id] = stored_order
 
-        worker = Worker(api, storage, profile='UP', reserve_price_distribution=0.1, order_life_time=60)
+        worker = Worker(api, storage, profile='UP', reserve_price_avg_price_deviation=0.1, order_life_time=60)
         worker.get_desired_reserve_price = get_desired_reserve_price
         self.assertRaises(Worker.ScriptQuitCondition, worker.main_flow)
 
@@ -520,7 +521,7 @@ class TestWorker(unittest.TestCase):
         stored_order = {'status': 'OPEN', 'order_data': order, 'order_type': 'RESERVE', 'profile': 'DOWN'}
         storage.orders[mock_order_id] = stored_order
 
-        worker = Worker(api, storage, profile='DOWN', reserve_price_distribution=0.1, order_life_time=60)
+        worker = Worker(api, storage, profile='DOWN', reserve_price_avg_price_deviation=0.1, order_life_time=60)
         worker.get_desired_reserve_price = get_desired_reserve_price
         self.assertRaises(Worker.ScriptQuitCondition, worker.main_flow)
 

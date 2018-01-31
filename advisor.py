@@ -13,6 +13,7 @@ class BackgroundStatAdvisor:
         self._currency_2 = currency_2
         self._profile = None
         self._profit_markup = None
+        self._reserve_markup = None
         self._avg_price = None
         self.run_in_new_thread()
 
@@ -30,11 +31,12 @@ class BackgroundStatAdvisor:
 
     def update_advice(self):
         deals = self._market_api.get_trades(self._currency_1, self._currency_2)
-        self._profile, self._profit_markup, self._avg_price = self._trend_analyzer.get_profile(deals)
+        self._profile, self._profit_markup, self._reserve_markup, self._avg_price = self._trend_analyzer.get_profile(
+            deals)
         i = 0
 
     def get_advice(self):
-        return self._profile, self._profit_markup, self._avg_price
+        return self._profile, self._profit_markup, self._reserve_markup, self._avg_price
 
     def run_in_new_thread(self):
         thread = Thread(target=self.run)

@@ -9,7 +9,7 @@ logger = logging.getLogger('xmb')
 
 class MarketSimulator:
     def __init__(self, folder, initial_btc_balance, initial_usd_balance,
-                 stock_fee, initial_timestamp=None):
+                 stock_fee, initial_timestamp=None, last_deals=100):
         self.balances = {'BTC': initial_btc_balance, 'USD': initial_usd_balance}
         self.balances_in_orders = {'BTC': 0, 'USD': 0}
         self.stock_fee = stock_fee
@@ -18,6 +18,8 @@ class MarketSimulator:
         self.order_id = 0
         self.deals = self.read_data(folder)
         self._set_initial_timestamp(initial_timestamp)
+        self._last_deals = last_deals
+
 
     def _set_initial_timestamp(self, initial_timestamp):
         if initial_timestamp is None:
@@ -93,7 +95,7 @@ class MarketSimulator:
         return int(self.deals[-1]['date'])
 
     def get_trades(self, currency_1, currency_2):
-        return self.deals[self.index - 101:self.index - 1]
+        return self.deals[self.index - self._last_deals:self.index - 1]
 
     def _handle_deals(self, new_deals):
         orders_to_complete = set()

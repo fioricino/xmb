@@ -10,39 +10,77 @@ class Worker:
     def __init__(self, api,
                  storage,
                  advisor,
-                 max_profit_orders_up=5,
-                 max_profit_orders_down=5,
-                 min_profit_orders_up=1,
-                 min_profit_orders_down=1,
-                 period=1,
-                 currency_1='BTC',
-                 currency_2='USD',
-                 stock_fee=0.002,
-                 profit_markup=0.001,
-                 reserve_price_distribution=0.001,
-                 profit_price_distribution=0.01,
-                 currency_1_deal_size=0.001,
-                 new_order_price_deviation=0.02
-                 , profit_order_lifetime=60, profit_distribution=0.0003):
-        self._profit_distribution = profit_distribution
-        self._profit_order_lifetime = profit_order_lifetime
+                 **kwargs):
         self._api = api
         self._storage = storage
         self._advisor = advisor
-        self._period = period
         self._interrupted = False
-        self._currency_1 = currency_1
-        self._currency_2 = currency_2
-        self._stock_fee = stock_fee
-        self._profit_markup = profit_markup
-        self._reserve_price_distribution = reserve_price_distribution
-        self._profit_price_distribution = profit_price_distribution
-        self._currency_1_deal_size = currency_1_deal_size
-        self._max_profit_orders_up = max_profit_orders_up
-        self._max_profit_orders_down = max_profit_orders_down
-        self._min_profit_orders_up = min_profit_orders_up
-        self._min_profit_orders_down = min_profit_orders_down
-        self._new_order_price_deviation = new_order_price_deviation
+
+        if 'profit_price_avg_price_deviation' in kwargs:
+            self._profit_price_avg_price_deviation = kwargs['profit_price_avg_price_deviation']
+        else:
+            self._profit_price_avg_price_deviation = 0.001
+
+        if 'profit_order_lifetime' in kwargs:
+            self._profit_order_lifetime = kwargs['profit_order_lifetime']
+        else:
+            self._profit_order_lifetime = 60
+
+        if 'period' in kwargs:
+            self._period = kwargs['period']
+        else:
+            self._period = 1
+
+        if 'currency_1' in kwargs:
+            self._currency_1 = kwargs['currency_1']
+        else:
+            self._currency_1 = 'BTC'
+
+        if 'currency_2' in kwargs:
+            self._currency_2 = kwargs['currency_2']
+        else:
+            self._currency_2 = 'USD'
+
+        if 'stock_fee' in kwargs:
+            self._stock_fee = kwargs['stock_fee']
+        else:
+            self._stock_fee = 0.002
+
+        if 'profit_markup' in kwargs:
+            self._profit_markup = kwargs['profit_markup']
+        else:
+            self._profit_markup = 0.001
+
+        if 'reserve_price_avg_price_deviation' in kwargs:
+            self._reserve_price_avg_price_deviation = kwargs['reserve_price_avg_price_deviation']
+        else:
+            self._reserve_price_avg_price_deviation = 0.001
+
+        if 'profit_price_prev_price_deviation' in kwargs:
+            self._profit_price_prev_price_deviation = kwargs['profit_price_prev_price_deviation']
+        else:
+            self._profit_price_prev_price_deviation = 0.0001
+
+        if 'currency_1_deal_size' in kwargs:
+            self._currency_1_deal_size = kwargs['currency_1_deal_size']
+        else:
+            self._currency_1_deal_size = 0.001
+
+        if 'max_profit_orders_up' in kwargs:
+            self._max_profit_orders_up = kwargs['max_profit_orders_up']
+        else:
+            self._max_profit_orders_up = 5
+
+        if 'max_profit_orders_down' in kwargs:
+            self._max_profit_orders_down = kwargs['max_profit_orders_down']
+        else:
+            self._max_profit_orders_down = 5
+
+        if 'same_profile_order_price_deviation' in kwargs:
+            self._same_profile_order_price_deviation = kwargs['same_profile_order_price_deviation']
+        else:
+            self._same_profile_order_price_deviation = 0.02
+
 
     # TODO move
     def run(self):
@@ -113,11 +151,11 @@ class Worker:
         self._create_profit_order(order)
 
     def _handle_open_reserve_order(self, order):
-        profile, profit_markup, mean_price = self._advisor.get_advice()
+        profile, profit_markup, reserve_markup, mean_price = self._advisor.get_advice()
         if order['profile'] == profile:
-            my_need_price = self._calculate_desired_reserve_price(mean_price, profile)
+            my_need_price = self._calculate_desired_reserve_price(mean_price, profile, reserve_markup)
             if math.fabs(my_need_price - float(order['order_data']['price'])) > float(
-                    order['order_data']['price']) * self._reserve_price_distribution:
+                    order['order_data']['price']) * self._reserve_price_avg_price_deviation:
                 logger.debug('Reserve price has changed for order {} -> {}: {}'
                              .format(order['order_id'], order['order_data']['price'], my_need_price))
                 is_order_partially_completed = self._api.is_order_partially_completed(order['order_id'])
@@ -127,6 +165,7 @@ class Worker:
                     self._cancel_order(order)
 
         else:
+            #TODO id it required?
             logger.debug('Profile has changed for order {}: {} -> {}'
                          .format(order['order_id'], order['profile'], profile))
             if profit_markup < self._profit_markup:
@@ -137,16 +176,22 @@ class Worker:
     def _handle_orders_wait_for_profit(self, wait_orders, open_orders):
         try:
             for order in wait_orders:
-                profit_orders = [o for o in open_orders if o['order_type'] == 'PROFIT'
-                                 and o['base_order']['order_id'] == order['order_id']]
-                if not profit_orders:
-                    self._create_profit_order(order)
-
-                else:
-                    for profit_order in profit_orders:
-                        self._recalculate_profit_order_price(profit_order)
+                self._handle_order_wait_for_profit(open_orders, order)
         except Exception as e:
             logger.exception('Cannot handle orders waiting for profit')
+
+    def _handle_order_wait_for_profit(self, open_orders, order):
+        try:
+            profit_orders = [o for o in open_orders if o['order_type'] == 'PROFIT'
+                             and o['base_order']['order_id'] == order['order_id']]
+            if not profit_orders:
+                self._create_profit_order(order)
+
+            else:
+                for profit_order in profit_orders:
+                    self._recalculate_profit_order_price(profit_order)
+        except Exception as e:
+            logger.exception('Cannot handle order waiting for profit {}'.format(order['order_id']))
 
     def _cancel_order(self, order):
         self._api.cancel_order(order['order_id'])
@@ -154,9 +199,14 @@ class Worker:
 
     def _make_reserve(self):
         try:
-            profile, profit_markup, avg_price = self._advisor.get_advice()
+            profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
             all_orders = self._storage.get_open_orders()
-            same_profile_orders = [o for o in all_orders if o['profile'] == profile and o['status'] == 'OPEN']
+            same_profile_orders = [o for o in all_orders if o['profile'] == profile and o['order_type'] == 'RESERVE'
+                                   # or o['status'] == 'WAIT_FOR_PROFIT' and not o['order_id']
+                                   #                                           in [oo[
+                                   #                                                  'base_order'] if 'base_order' in oo else None
+                                   #                                             for oo in all_orders]
+                                   ]
             if len(same_profile_orders) >= self._get_max_open_profit_orders_limit(profile):
                 logger.debug('Too much orders for profile {}: {}'.format(profile, len(same_profile_orders)))
                 return
@@ -171,16 +221,16 @@ class Worker:
                         o['order_data']['price'] if o['order_type'] == 'RESERVE' else o['base_order']['order_data'][
                             'price']) - avg_price) for o in same_profile_orders]) / avg_price
                 # Првоеряем минимальное отклонение цены от существующих ордеров:
-                if min_price_diff <= self._new_order_price_deviation:
+                if min_price_diff <= self._same_profile_order_price_deviation:
                     logger.debug('Price deviation with other orders is too small: {} < {}'.format(min_price_diff,
-                                                                                                  self._new_order_price_deviation))
+                                                                                                  self._same_profile_order_price_deviation))
                     return
-            self._create_reserve_order(profile, avg_price)
+            self._create_reserve_order(profile, avg_price, reserve_markup)
         except Exception as e:
             logger.exception('Cannot make reserve')
 
-    def _create_reserve_order(self, profile, avg_price):
-        my_need_price = self._calculate_desired_reserve_price(avg_price, profile)
+    def _create_reserve_order(self, profile, avg_price, reserve_markup):
+        my_need_price = self._calculate_desired_reserve_price(avg_price, profile, reserve_markup)
         my_amount = self._calculate_desired_reserve_amount(profile)
         new_order_id = str(self._api.create_order(
             currency_1=self._currency_1,
@@ -222,7 +272,7 @@ class Worker:
                         0.00134345 1.5045
                     """
         # balances = self._api.get_balances()
-        profile, profit_markup, avg_price = self._advisor.get_advice()
+        profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
         base_profile = base_order['profile']
         # if profile != base_profile:
         #     logger.debug('Profile has changed: {}->{}. Will not create profit order for reserve order {}'
@@ -236,6 +286,7 @@ class Worker:
         quantity = self._calculate_profit_quantity(base_order['order_data'], base_profile, order_profit_markup)
 
         price = self._calculate_profit_price(quantity, base_order['order_data'], base_profile, profit_markup)
+        logger.info('Create new profit order for base order: {}'.format(base_order['order_id']))
         new_order_id = str(self._api.create_order(
             currency_1=self._currency_1,
             currency_2=self._currency_2,
@@ -291,13 +342,13 @@ class Worker:
             return self._currency_1_deal_size
         raise ValueError('Unrecognized profile: ' + profile)
 
-    def _calculate_desired_reserve_price(self, avg_price, profile):
+    def _calculate_desired_reserve_price(self, avg_price, profile, reserve_markup):
         if profile == 'UP':
             # хотим купить подешевле
-            return avg_price / (1 + self._stock_fee)
+            return avg_price * (1 + reserve_markup)
         if profile == 'DOWN':
             # хотим продать подороже
-            return avg_price / (1 - self._stock_fee)
+            return avg_price * (1 + reserve_markup)
         raise ValueError('Unrecognized profile: ' + profile)
 
     def _calculate_profit_quantity(self, base_order, profile, profit_markup):
@@ -328,18 +379,17 @@ class Worker:
             return self._max_profit_orders_down
         raise ValueError('Invalid profile: ' + profile)
 
-    def _get_min_open_profit_orders_limit(self, profile):
-        if profile == 'UP':
-            return self._min_profit_orders_up
-        if profile == 'DOWN':
-            return self._min_profit_orders_down
-        raise ValueError('Invalid profile: ' + profile)
-
     def _recalculate_profit_order_price(self, profit_order):
-        profile, profit_markup, avg_price = self._advisor.get_advice()
-        profit_price = float(profit_order['order_data']['price'])
-        if math.fabs(profit_price - avg_price) > avg_price * self._profit_price_distribution \
-                and int(profit_order['created']) - self._get_time() > self._profit_order_lifetime \
-                and abs(float(profit_order['profit_markup']) - self._profit_markup) > self._profit_distribution:
-            logger.debug('Profit markup has changed for order {}'.format(profit_order['order_id']))
-            self._cancel_order(profit_order)
+        profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
+        if int(self._get_time() - profit_order['created']) > self._profit_order_lifetime \
+                and float(profit_order['profit_markup']) > self._profit_markup:
+            desired_profit_price = self._calculate_profit_price(float(profit_order['order_data']['quantity']),
+                                                                profit_order['base_order']['order_data'],
+                                                                profit_order['profile'],
+                                                                self._profit_markup)
+            if abs(desired_profit_price - float(profit_order['order_data'][
+                                                    'price'])) / desired_profit_price > self._profit_price_prev_price_deviation \
+                    and abs(
+                                desired_profit_price - avg_price) / desired_profit_price > self._profit_price_avg_price_deviation:
+                logger.debug('Profit markup has changed for order {}'.format(profit_order['order_id']))
+                self._cancel_order(profit_order)
