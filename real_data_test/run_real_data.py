@@ -152,12 +152,12 @@ class InstantAdvisor:
 
 args = {
     'profit_price_avg_price_deviation': [0.001],
-    'profit_order_lifetime': [128],
+    'profit_order_lifetime': [64],
     'period': [1],
     'currency_1': ['BTC'],
     'currency_2': ['USD'],
     'stock_fee': [0.002],
-    'profit_markup': [0.002],
+    'profit_markup': [0.002, 0.003],
     'reserve_price_avg_price_deviation': [0.002],
     'profit_price_prev_price_deviation': [0.0001],
     'currency_1_deal_size': [0.001],
@@ -166,10 +166,10 @@ args = {
     'same_profile_order_price_deviation': [0.01],
 
     'rolling_window': [6],
-    'profit_multiplier': [192],
-    'mean_price_period': [4],
+    'profit_multiplier': [16, 32, 64, 128, 192, 256],
+    'mean_price_period': [4, 16, 32],
     'interpolation_degree': [20],
-    'profit_free_weight': [0.0016],
+    'profit_free_weight': [0.002, 0.003],
     'reserve_multiplier': [0],
 
     'last_deals': [100]

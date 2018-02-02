@@ -1,22 +1,17 @@
+import argparse
 import json
-import logging
 import os
+import sys
 from collections import Counter
 from datetime import timedelta, datetime
-from decimal import Decimal
-
-import argparse
-
-import sys
 from pprint import pprint
 
 from exmo_api import ExmoApi
-from json_api import JsonStorage
 
 FEE = 0.002
 
 PERIOD = timedelta(hours=19)
-START_TIME = datetime(2018, 1, 31, 21, 00, 00)
+START_TIME = datetime(2018, 2, 1, 22, 15, 00)
 
 ORDER_FILE = r'real_run\orders.json'
 ARCHIVE_FOLDER = r'real_run\archive'
@@ -43,7 +38,7 @@ if __name__ == '__main__':
 
     ok_deals = []
 
-    pprint(deals)
+    # pprint(deals)
     c = Counter()
 
     for order_id, deal in deals.items():
@@ -61,12 +56,21 @@ if __name__ == '__main__':
                               and str(o['base_order']['order_id']) == order_id and o['status'] == 'COMPLETED']
         if not related_orders:
             continue
-        related_order = related_orders[0]
-        related_deal = deals[str(related_order['order_id'])]
-        if datetime.fromtimestamp(int(deal['date'])) >= START_TIME and datetime.fromtimestamp(int(related_deal['date'])) > START_TIME:
-            ok_deals.append(deal)
-            ok_deals.append(related_deal)
+        ok_related_deals = []
+        for related_order in related_orders:
+            related_order_id = str(related_order['order_id'])
+            if related_order_id not in deals:
+                continue
+            related_deal = deals[related_order_id]
+            if datetime.fromtimestamp(int(deal['date'])) >= START_TIME and datetime.fromtimestamp(
+                    int(related_deal['date'])) > START_TIME:
+                ok_related_deals.append(deal)
+                ok_related_deals.append(related_deal)
+            else:
+                continue
+        ok_deals.extend(ok_related_deals)
 
+    pprint(ok_deals)
 
     for d in ok_deals:
         if d['type'] == 'buy':
