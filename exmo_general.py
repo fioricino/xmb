@@ -420,11 +420,14 @@ class Worker:
                 logger.exception('Cannot handle suspended order {}'.format(order['order_id']))
 
     def _handle_suspended_order(self, order, avg_price):
-        if (float(order['order_data']['price']) - avg_price) / avg_price <= self._suspend_order_deviation:
+        if self._suspend_order_deviation is None or (
+            float(order['order_data']['price']) - avg_price) / avg_price <= self._suspend_order_deviation:
             logger.info('Reopen order {}'.format(order['base_order']['order_id']))
             self._storage.update_order_status(order['order_id'], 'WAIT_FOR_PROFIT', self._get_time())
 
     def _handle_open_profit_order(self, order):
+        if self._suspend_order_deviation is None:
+            return
         if self._api.is_order_partially_completed(order['order_id']):
             return
         profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
