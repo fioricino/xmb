@@ -81,6 +81,11 @@ class Worker:
         else:
             self._same_profile_order_price_deviation = 0.02
 
+        if 'suspend_order_deviation' in kwargs:
+            self._suspend_order_deviation = kwargs['suspend_order_deviation']
+        else:
+            self._suspend_order_deviation = None
+
 
     # TODO move
     def run(self):
@@ -100,10 +105,19 @@ class Worker:
     def main_flow(self):
         # Получаем список активных ордеров
         all_orders = self._storage.get_open_orders()
+
+        suspended_orders = [o for o in all_orders if o['status'] == 'SUSPENDED']
+
+        if suspended_orders:
+            self._handle_suspended_orders(suspended_orders)
+
         open_orders = [o for o in all_orders if o['status'] == 'OPEN']
-        wait_orders = [o for o in all_orders if o['status'] == 'WAIT_FOR_PROFIT']
+
         if open_orders:
             self._handle_open_orders(open_orders)
+
+        wait_orders = [o for o in all_orders if o['status'] == 'WAIT_FOR_PROFIT']
+
         if wait_orders:
             self._handle_orders_wait_for_profit(wait_orders, open_orders)
         self._make_reserve()
@@ -125,6 +139,8 @@ class Worker:
                 if order['order_type'] == 'RESERVE':
                     # open profit orders can be ignored
                     self._handle_open_reserve_order(order)
+                else:
+                    self._handle_open_profit_order(order)
             else:
                 # order completed
                 self._handle_completed_order(order)
@@ -194,6 +210,7 @@ class Worker:
             logger.exception('Cannot handle order waiting for profit {}'.format(order['order_id']))
 
     def _cancel_order(self, order):
+        logger.info('Cancel order {}'.format(order['order_id']))
         self._api.cancel_order(order['order_id'])
         self._storage.delete(order['order_id'], 'CANCELED', self._get_time())
 
@@ -202,6 +219,7 @@ class Worker:
             profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
             all_orders = self._storage.get_open_orders()
             same_profile_orders = [o for o in all_orders if o['profile'] == profile and o['order_type'] == 'RESERVE'
+                                   and o['status'] != 'SUSPENDED'
                                    # or o['status'] == 'WAIT_FOR_PROFIT' and not o['order_id']
                                    #                                           in [oo[
                                    #                                                  'base_order'] if 'base_order' in oo else None
@@ -392,3 +410,26 @@ class Worker:
                                 desired_profit_price - avg_price) / desired_profit_price > self._profit_price_avg_price_deviation:
                 logger.debug('Profit markup has changed for order {}'.format(profit_order['order_id']))
                 self._cancel_order(profit_order)
+
+    def _handle_suspended_orders(self, suspended_orders):
+        profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
+        for order in suspended_orders:
+            try:
+                self._handle_suspended_order(order, avg_price)
+            except:
+                logger.exception('Cannot handle suspended order {}'.format(order['order_id']))
+
+    def _handle_suspended_order(self, order, avg_price):
+        if (float(order['order_data']['price']) - avg_price) / avg_price <= self._suspend_order_deviation:
+            logger.info('Reopen order {}'.format(order['base_order']['order_id']))
+            self._storage.update_order_status(order['order_id'], 'WAIT_FOR_PROFIT', self._get_time())
+
+    def _handle_open_profit_order(self, order):
+        if self._api.is_order_partially_completed(order['order_id']):
+            return
+        profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
+
+        if (float(order['base_order']['order_data']['price']) - avg_price) / avg_price > self._suspend_order_deviation:
+            logger.info('Suspend order {}'.format(order['base_order']['order_id']))
+            self._cancel_order(order)
+            self._storage.update_order_status(order['base_order']['order_id'], 'SUSPENDED', self._get_time())

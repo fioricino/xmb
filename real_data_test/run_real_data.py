@@ -31,32 +31,34 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 
-def get_theor_balances(storage, market, stock_fee):
-    balances = dict(market.get_balances())
-    open_orders = [o for o in storage.get_open_orders() if o['status'] == 'OPEN']
-    for order in open_orders:
-        quantity = float(order['order_data']['quantity'])
-        price = float(order['order_data']['price'])
-        if order['order_type'] == 'RESERVE':
-            if order['profile'] == 'UP':
-                # return USD to balance
-                balances['USD'] += quantity * price
-            elif order['profile'] == 'DOWN':
-                balances['BTC'] += quantity
-        elif order['order_type'] == 'PROFIT':
-            if order['profile'] == 'UP':
-                balances['USD'] += quantity * price * (1 - stock_fee)
-            elif order['profile'] == 'DOWN':
-                balances['BTC'] += quantity * (1 - stock_fee)
-    return balances
+# def get_theor_balances(storage, market, stock_fee):
+#     balances = dict(market.get_balances())
+#     open_orders = [o for o in storage.get_open_orders() if o['status'] == 'OPEN']
+#     for order in open_orders:
+#         quantity = float(order['order_data']['quantity'])
+#         price = float(order['order_data']['price'])
+#         if order['order_type'] == 'RESERVE':
+#             if order['profile'] == 'UP':
+#                 # return USD to balance
+#                 balances['USD'] += quantity * price
+#             elif order['profile'] == 'DOWN':
+#                 balances['BTC'] += quantity
+#         elif order['order_type'] == 'PROFIT':
+#             if order['profile'] == 'UP':
+#                 balances['USD'] += quantity * price * (1 - stock_fee)
+#             elif order['profile'] == 'DOWN':
+#                 balances['BTC'] += quantity * (1 - stock_fee)
+#     return balances
 
 
 def get_stats(sim, storage):
-    stat = {'USD': sim.balances['USD'], 'BTC': sim.balances['BTC'], 'BTC_ord': sim.get_balances_with_orders()['BTC'],
-            'USD_ORD': sim.get_balances_with_orders()['USD'],
-            'USD_prof': storage.get_stats()['UP'], 'BTC_prof': storage.get_stats()['DOWN'],
-            'USD_theor': get_theor_balances(storage, sim, 0.002)['USD'],
-            'BTC_theor': get_theor_balances(storage, sim, 0.002)['BTC']}
+    stat = {'USD': sim.balances['USD'], 'BTC': sim.balances['BTC'],
+            # 'BTC_ord': sim.get_balances_with_orders()['BTC'],
+            # 'USD_ORD': sim.get_balances_with_orders()['USD'],
+            'USD_prof': storage.get_stats()['UP'], 'BTC_prof': storage.get_stats()['DOWN']
+            }
+    # 'USD_theor': get_theor_balances(storage, sim, 0.002)['USD'],
+    # 'BTC_theor': get_theor_balances(storage, sim, 0.002)['BTC']}
     return stat
 
 
