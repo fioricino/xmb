@@ -105,20 +105,26 @@ class Worker:
     def main_flow(self):
         # Получаем список активных ордеров
         all_orders = self._storage.get_open_orders()
+
         suspended_orders = [o for o in all_orders if o['status'] == 'SUSPENDED']
-        open_orders = [o for o in all_orders if o['status'] == 'OPEN']
-        wait_orders = [o for o in all_orders if o['status'] == 'WAIT_FOR_PROFIT']
 
         if suspended_orders:
             self._handle_suspended_orders(suspended_orders)
 
-
+        open_orders = [o for o in all_orders if o['status'] == 'OPEN']
+        
         if open_orders:
             self._handle_open_orders(open_orders)
 
-
+        wait_orders = [o for o in all_orders if o['status'] == 'WAIT_FOR_PROFIT']
+        
         if wait_orders:
             self._handle_orders_wait_for_profit(wait_orders, open_orders)
+
+        profit_orders = [o for o in all_orders if o['status'] == 'PROFIT_ORDER_CREATED']
+        if profit_orders:
+            self._handle_profit_orders_created(profit_orders)
+
         self._make_reserve()
 
     def _handle_open_orders(self, open_orders):
@@ -202,9 +208,6 @@ class Worker:
             if not profit_orders:
                 self._create_profit_order(order)
 
-            else:
-                for profit_order in profit_orders:
-                    self._recalculate_profit_order_price(profit_order)
         except Exception as e:
             logger.exception('Cannot handle order waiting for profit {}'.format(order['order_id']))
 
@@ -323,7 +326,7 @@ class Worker:
 
         stored_order = self._storage.create_order(new_order, base_profile, 'PROFIT', base_order=base_order,
                                                   created=self._get_time(), profit_markup=order_profit_markup)
-        # self._storage.update_order_status(base_order['order_id'], 'PROFIT_ORDER_CREATED', self._get_time())
+        self._storage.update_order_status(base_order['order_id'], 'PROFIT_ORDER_CREATED', self._get_time())
         logger.info('Created new profit order: {}'.format(stored_order))
 
     def _get_open_orders_for_create(self):
@@ -409,6 +412,8 @@ class Worker:
                                 desired_profit_price - avg_price) / desired_profit_price > self._profit_price_avg_price_deviation:
                 logger.debug('Profit markup has changed for order {}'.format(profit_order['order_id']))
                 self._cancel_order(profit_order)
+                self._storage.update_order_status(profit_order['base_order']['order_id'], 'WAIT_FOR_PROFIT',
+                                                  self._get_time())
 
     def _handle_suspended_orders(self, suspended_orders):
         profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
@@ -435,3 +440,10 @@ class Worker:
             logger.info('Suspend order {}'.format(order['base_order']['order_id']))
             self._cancel_order(order)
             self._storage.update_order_status(order['base_order']['order_id'], 'SUSPENDED', self._get_time())
+
+    def _handle_profit_orders_created(self, profit_orders):
+        for profit_order in profit_orders:
+            try:
+                self._recalculate_profit_order_price(profit_order)
+            except:
+                logger.exception('Cannot recalculate price for order {}'.format(profit_order['order_id']))
