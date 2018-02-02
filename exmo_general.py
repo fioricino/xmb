@@ -123,7 +123,7 @@ class Worker:
 
         profit_orders = [o for o in all_orders if o['status'] == 'PROFIT_ORDER_CREATED']
         if profit_orders:
-            self._handle_profit_orders_created(profit_orders)
+            self._handle_profit_orders_created(profit_orders, open_orders)
 
         self._make_reserve()
 
@@ -398,22 +398,25 @@ class Worker:
             return self._max_profit_orders_down
         raise ValueError('Invalid profile: ' + profile)
 
-    def _recalculate_profit_order_price(self, profit_order):
-        profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
-        if int(self._get_time() - profit_order['created']) > self._profit_order_lifetime \
-                and float(profit_order['profit_markup']) > self._profit_markup:
-            desired_profit_price = self._calculate_profit_price(float(profit_order['order_data']['quantity']),
-                                                                profit_order['base_order']['order_data'],
-                                                                profit_order['profile'],
-                                                                self._profit_markup)
-            if abs(desired_profit_price - float(profit_order['order_data'][
-                                                    'price'])) / desired_profit_price > self._profit_price_prev_price_deviation \
-                    and abs(
-                                desired_profit_price - avg_price) / desired_profit_price > self._profit_price_avg_price_deviation:
-                logger.debug('Profit markup has changed for order {}'.format(profit_order['order_id']))
-                self._cancel_order(profit_order)
-                self._storage.update_order_status(profit_order['base_order']['order_id'], 'WAIT_FOR_PROFIT',
-                                                  self._get_time())
+    def _recalculate_profit_order_price(self, reserve_order, open_orders):
+        profit_orders = [o for o in open_orders if o['order_type'] == 'PROFIT'
+                         and o['base_order']['order_id'] == reserve_order['order_id']]
+        for profit_order in profit_orders:
+            profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
+            if int(self._get_time() - profit_order['created']) > self._profit_order_lifetime \
+                    and float(profit_order['profit_markup']) > self._profit_markup:
+                desired_profit_price = self._calculate_profit_price(float(profit_order['order_data']['quantity']),
+                                                                    profit_order['base_order']['order_data'],
+                                                                    profit_order['profile'],
+                                                                    self._profit_markup)
+                if abs(desired_profit_price - float(profit_order['order_data'][
+                                                        'price'])) / desired_profit_price > self._profit_price_prev_price_deviation \
+                        and abs(
+                                    desired_profit_price - avg_price) / desired_profit_price > self._profit_price_avg_price_deviation:
+                    logger.debug('Profit markup has changed for order {}'.format(profit_order['order_id']))
+                    self._cancel_order(profit_order)
+                    self._storage.update_order_status(profit_order['base_order']['order_id'], 'WAIT_FOR_PROFIT',
+                                                      self._get_time())
 
     def _handle_suspended_orders(self, suspended_orders):
         profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
@@ -441,9 +444,9 @@ class Worker:
             self._cancel_order(order)
             self._storage.update_order_status(order['base_order']['order_id'], 'SUSPENDED', self._get_time())
 
-    def _handle_profit_orders_created(self, profit_orders):
-        for profit_order in profit_orders:
+    def _handle_profit_orders_created(self, base_orders, open_orders):
+        for order in base_orders:
             try:
-                self._recalculate_profit_order_price(profit_order)
+                self._recalculate_profit_order_price(order, open_orders)
             except:
-                logger.exception('Cannot recalculate price for order {}'.format(profit_order['order_id']))
+                logger.exception('Cannot recalculate price for order {}'.format(order['order_id']))
