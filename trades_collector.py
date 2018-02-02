@@ -5,7 +5,7 @@ import time
 
 from exmo_api_proxy import ExmoApiProxy
 
-FOLDER = 'trades-2018-01-26'
+FOLDER = 'trades-2018-02-02'
 TRADES_PER_FILE = 1000
 
 if __name__ == '__main__':

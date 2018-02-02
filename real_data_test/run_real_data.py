@@ -31,32 +31,34 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 
-def get_theor_balances(storage, market, stock_fee):
-    balances = dict(market.get_balances())
-    open_orders = [o for o in storage.get_open_orders() if o['status'] == 'OPEN']
-    for order in open_orders:
-        quantity = float(order['order_data']['quantity'])
-        price = float(order['order_data']['price'])
-        if order['order_type'] == 'RESERVE':
-            if order['profile'] == 'UP':
-                # return USD to balance
-                balances['USD'] += quantity * price
-            elif order['profile'] == 'DOWN':
-                balances['BTC'] += quantity
-        elif order['order_type'] == 'PROFIT':
-            if order['profile'] == 'UP':
-                balances['USD'] += quantity * price * (1 - stock_fee)
-            elif order['profile'] == 'DOWN':
-                balances['BTC'] += quantity * (1 - stock_fee)
-    return balances
+# def get_theor_balances(storage, market, stock_fee):
+#     balances = dict(market.get_balances())
+#     open_orders = [o for o in storage.get_open_orders() if o['status'] == 'OPEN']
+#     for order in open_orders:
+#         quantity = float(order['order_data']['quantity'])
+#         price = float(order['order_data']['price'])
+#         if order['order_type'] == 'RESERVE':
+#             if order['profile'] == 'UP':
+#                 # return USD to balance
+#                 balances['USD'] += quantity * price
+#             elif order['profile'] == 'DOWN':
+#                 balances['BTC'] += quantity
+#         elif order['order_type'] == 'PROFIT':
+#             if order['profile'] == 'UP':
+#                 balances['USD'] += quantity * price * (1 - stock_fee)
+#             elif order['profile'] == 'DOWN':
+#                 balances['BTC'] += quantity * (1 - stock_fee)
+#     return balances
 
 
 def get_stats(sim, storage):
-    stat = {'USD': sim.balances['USD'], 'BTC': sim.balances['BTC'], 'BTC_ord': sim.get_balances_with_orders()['BTC'],
-            'USD_ORD': sim.get_balances_with_orders()['USD'],
-            'USD_prof': storage.get_stats()['UP'], 'BTC_prof': storage.get_stats()['DOWN'],
-            'USD_theor': get_theor_balances(storage, sim, 0.002)['USD'],
-            'BTC_theor': get_theor_balances(storage, sim, 0.002)['BTC']}
+    stat = {'USD': sim.balances['USD'], 'BTC': sim.balances['BTC'],
+            # 'BTC_ord': sim.get_balances_with_orders()['BTC'],
+            # 'USD_ORD': sim.get_balances_with_orders()['USD'],
+            'USD_prof': storage.get_stats()['UP'], 'BTC_prof': storage.get_stats()['DOWN']
+            }
+    # 'USD_theor': get_theor_balances(storage, sim, 0.002)['USD'],
+    # 'BTC_theor': get_theor_balances(storage, sim, 0.002)['BTC']}
     return stat
 
 
@@ -82,8 +84,8 @@ def run(cfg, base_folder, handlers):
     handlers = create_handlers(logs_dir)
     archive_dir = os.path.join(run_folder, 'archive')
     os.makedirs(archive_dir)
-    sim = MarketSimulator('deals_5day', initial_btc_balance=cfg['max_profit_orders_down'] * 0.0011,
-                          initial_usd_balance=cfg['max_profit_orders_up'] * 13,
+    sim = MarketSimulator('deals_5day', initial_btc_balance=0.01,
+                          initial_usd_balance=100,
                           stock_fee=cfg['stock_fee'], last_deals=cfg['last_deals'])
     storage = JsonStorage(os.path.join(run_folder, 'orders.json'), archive_dir)
 
@@ -152,25 +154,26 @@ class InstantAdvisor:
 
 args = {
     'profit_price_avg_price_deviation': [0.001],
-    'profit_order_lifetime': [128],
+    'profit_order_lifetime': [64],
     'period': [1],
     'currency_1': ['BTC'],
     'currency_2': ['USD'],
     'stock_fee': [0.002],
-    'profit_markup': [0.002],
+    'profit_markup': [0.003],
     'reserve_price_avg_price_deviation': [0.002],
     'profit_price_prev_price_deviation': [0.0001],
     'currency_1_deal_size': [0.001],
-    'max_profit_orders_up': [10],
-    'max_profit_orders_down': [10],
+    'max_profit_orders_up': [3],
+    'max_profit_orders_down': [3],
     'same_profile_order_price_deviation': [0.01],
 
     'rolling_window': [6],
-    'profit_multiplier': [192],
-    'mean_price_period': [4],
+    'profit_multiplier': [256],
+    'mean_price_period': [16],
     'interpolation_degree': [20],
-    'profit_free_weight': [0.0016],
+    'profit_free_weight': [0.003],
     'reserve_multiplier': [0],
+    'suspend_order_deviation': [None, 0.03],
 
     'last_deals': [100]
 }
@@ -181,7 +184,7 @@ configs = [dict(cfg) for cfg in product]
 handlers = []
 for cfg in configs:
     try:
-        handlers = run(cfg, 'test_5day', handlers)
+        handlers = run(cfg, 'test_susp', handlers)
     except:
         logger.exception('Error')
 
