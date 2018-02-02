@@ -421,7 +421,7 @@ class Worker:
     def _handle_suspended_order(self, order, avg_price):
         if self._suspend_order_deviation is None or (
             float(order['order_data']['price']) - avg_price) / avg_price <= self._suspend_order_deviation:
-            logger.info('Reopen order {}'.format(order['base_order']['order_id']))
+            logger.info('Reopen order {}'.format(order['order_id']))
             self._storage.update_order_status(order['order_id'], 'WAIT_FOR_PROFIT', self._get_time())
 
     def _handle_open_profit_order(self, order):
