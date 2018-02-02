@@ -1,74 +1,95 @@
+import argparse
+import json
+import os
+import sys
 from collections import Counter
-from decimal import Decimal
+from collections import defaultdict
+from datetime import timedelta, datetime
+from pprint import pprint
 
 from exmo_api import ExmoApi
 
-FEE = Decimal('0.002')
+FEE = 0.002
 
+PERIOD = timedelta(hours=19)
+START_TIME = datetime(2018, 1, 31, 21, 0, 0)
 
-def get_cf(order_type, currency):
-    if order_type == 'sell':
-        if currency == 'btc':
-            return 1
-        elif currency == 'usd':
-            return 1 - FEE
-    elif order_type == 'buy':
-        if currency == 'btc':
-            return 1 - FEE
-        elif currency == 'usd':
-            return 1
-    raise ValueError()
-
-
-def get_sign(order_type, currency):
-    if order_type == 'sell':
-        if currency == 'btc':
-            return -1
-        elif currency == 'usd':
-            return 1
-    elif order_type == 'buy':
-        if currency == 'btc':
-            return 1
-        elif currency == 'usd':
-            return -1
-    raise ValueError()
-
-
-def calculate_deal(deal):
-    btc_cf = get_cf(deal['type'], 'btc')
-    usd_cf = get_cf(deal['type'], 'usd')
-
-    btc_sign = get_sign(deal['type'], 'btc')
-    usd_sign = get_sign(deal['type'], 'usd')
-
-    btc_transfer = btc_cf * Decimal(deal['quantity']) * btc_sign
-    usd_transfer = usd_cf * Decimal(deal['quantity']) * usd_sign * Decimal(deal['price'])
-
-    return btc_transfer, usd_transfer
-
-
-def calculate_profit(deals):
-    c = Counter()
-    last_price = Decimal(deals[0]['price'])
-    last_usd_amount = Decimal(deals[0]['amount'])
-    for deal in deals:
-        btc_amount, usd_amount = calculate_deal(deal)
-        c['btc'] += btc_amount
-        c['usd'] += usd_amount
-        c['btc_in_usd'] = Decimal(c['btc']) * last_price
-        c['profit'] = c['usd'] + c['btc_in_usd']
-        c['profit_percent'] = c['profit'] / last_usd_amount * 100
-    return c
-
+ORDER_FILE = r'c:\temp\xmb\orders.json'
+ARCHIVE_FOLDER = r'c:\temp\xmb\archive'
 
 if __name__ == '__main__':
-    deals = ExmoApi().get_user_trades('BTC', 'USD', limit=7, offset=2)
-    if deals:
-        del (deals[-2])
-        c = calculate_profit(deals)
-        print(c)
-        print('USD: {}'.format(c['usd']))
-        print('BTC: {}'.format(c['btc']))
-        print('BTC IN USD: {}'.format(c['btc_in_usd']))
-        print('Profit USD: {}'.format(c['profit']))
-        print('Profit %: {}'.format(c['profit_percent']))
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-k', '--key', type=str, help='Api key')
+    parser.add_argument('-s', '--secret', type=str, help='Api secret')
+    sysargs = parser.parse_args(sys.argv[1:])
+
+    exmo_api = ExmoApi(sysargs.key, sysargs.secret)
+
+    orders = {}
+    with open(ORDER_FILE, 'r') as f:
+        fl = json.load(f)
+        orders.update(fl)
+    for a in os.listdir(ARCHIVE_FOLDER):
+        with open(os.path.join(ARCHIVE_FOLDER, a)) as f:
+            order = json.load(f)
+            orders[str(order['order_id'])] = order
+
+    ds = exmo_api.get_user_trades('BTC', 'USD', limit=200)
+    deals = defaultdict(list)
+    for d in ds:
+        deals[str(d['order_id'])].append(d)
+
+    ok_deals = {}
+
+    c = Counter()
+
+    for order_id, dealset in deals.items():
+        if order_id not in orders:
+            continue
+        order = orders[order_id]
+        if order is None or order['status'] != 'COMPLETED':
+            continue
+        if order['order_type'] == 'PROFIT':
+            continue
+        else:
+            related_orders = [o for o in orders.values() if o['base_order'] is not None
+                              and str(o['base_order']['order_id']) == order_id and o['status'] == 'COMPLETED']
+        if not related_orders:
+            continue
+        ok_related_deals = []
+        related_orders_ok = True
+        for related_order in related_orders:
+            related_order_id = str(related_order['order_id'])
+            if related_order_id not in deals:
+                related_orders_ok = False
+                break
+            related_dealset = deals[related_order_id]
+            for deal in dealset:
+                for related_deal in related_dealset:
+                    if datetime.fromtimestamp(int(deal['date'])) >= START_TIME and datetime.fromtimestamp(
+                            int(related_deal['date'])) > START_TIME:
+                        ok_related_deals.append(deal)
+                        ok_related_deals.append(related_deal)
+                    else:
+                        related_orders_ok = False
+        if related_orders_ok:
+            for d in ok_related_deals:
+                ok_deals[d['trade_id']] = d
+
+    pprint(ok_deals)
+
+    for d in ok_deals.values():
+        if d['type'] == 'buy':
+            c['BTC'] += float(d['quantity']) * (1 - FEE)
+            c['USD'] -= float(d['price']) * float(d['quantity'])
+        else:
+            c['BTC'] -= float(d['quantity'])
+            c['USD'] += float(d['price']) * float(d['quantity']) * (1 - FEE)
+
+    print(c)
+
+
+
+
+
+
