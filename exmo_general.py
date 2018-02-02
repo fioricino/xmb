@@ -105,18 +105,17 @@ class Worker:
     def main_flow(self):
         # Получаем список активных ордеров
         all_orders = self._storage.get_open_orders()
-
         suspended_orders = [o for o in all_orders if o['status'] == 'SUSPENDED']
+        open_orders = [o for o in all_orders if o['status'] == 'OPEN']
+        wait_orders = [o for o in all_orders if o['status'] == 'WAIT_FOR_PROFIT']
 
         if suspended_orders:
             self._handle_suspended_orders(suspended_orders)
 
-        open_orders = [o for o in all_orders if o['status'] == 'OPEN']
 
         if open_orders:
             self._handle_open_orders(open_orders)
 
-        wait_orders = [o for o in all_orders if o['status'] == 'WAIT_FOR_PROFIT']
 
         if wait_orders:
             self._handle_orders_wait_for_profit(wait_orders, open_orders)
