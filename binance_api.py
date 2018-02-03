@@ -129,10 +129,14 @@ class BinanceApi:
         headers = {"Content-type": "application/x-www-form-urlencoded",
                    "X-MBX-APIKEY": API_KEY,
                    "signature": sign}
-        conn = http.client.HTTPSConnection(API_URL, timeout=60)
-        conn.request(http_method, url, payload, headers)
-        response = conn.getresponse().read()
-        conn.close()
+        conn = None
+        try:
+            conn = http.client.HTTPSConnection(API_URL, timeout=60)
+            conn.request(http_method, url, payload, headers)
+            response = conn.getresponse().read()
+        finally:
+            if conn is not None:
+                conn.close()
         try:
             obj = json.loads(response.decode('utf-8'))
             logger.debug('Received response: {}'.format(response))
@@ -194,5 +198,8 @@ class BinanceApi:
         for obj in data:
             newObj = {}
             newObj['order_id'] = obj['orderId']
+            newObj['price'] = obj['price']
+            newObj['quantity'] = obj['qty']
+            newObj['trade_id'] = obj['id']
             newData.append(newObj)
         return newData
