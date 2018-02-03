@@ -12,10 +12,10 @@ from exmo_api import ExmoApi
 FEE = 0.002
 
 PERIOD = timedelta(hours=19)
-START_TIME = datetime(2018, 1, 31, 21, 0, 0)
+START_TIME = datetime(2018, 2, 3, 0, 0, 0)
 
-ORDER_FILE = r'c:\temp\xmb\orders.json'
-ARCHIVE_FOLDER = r'c:\temp\xmb\archive'
+ORDER_FILE = r'real_run\orders.json'
+ARCHIVE_FOLDER = r'real_run\archive'
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
