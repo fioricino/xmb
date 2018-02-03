@@ -22,8 +22,8 @@ API_KEY = 'Gowa5xGG3PdCWa5ciCrZeTPXGqrUNy7Qh4MKHXiKUGMvaLM4GAhgIGJlbaFIZVlV'
 API_SECRET = 'avIfwd471KlubRpXNHyV2lH9cgRZLfgGngNvBCx2SyzEDVlTbhGqF2vQqiATGUfc'
 
 TRADES_LIMIT = '100'
-CUR_1 = 'ETC'
-CUR_2 = 'ETH'
+CUR_1 = 'BTC'
+CUR_2 = 'USDT'
 
 logger = logging.getLogger('xmb')
 
@@ -77,16 +77,16 @@ class BinanceApi:
         return BinanceApi._call_binance_api(url, 'GET', timestamp=timestamp)['balances']
 
 
-    def create_order(self, currency_1, currency_2, quantity, price, side):
-        logger.info('Create %s order (quantity=%s, price=%s)', side, quantity, price)
+    def create_order(self, currency_1, currency_2, quantity, price, type):
+        logger.info('Create %s order (quantity=%s, price=%s)', type, quantity, price)
         timestamp = BinanceApi._calculateTimestamp()
         url = "/api/" + API_VERSION_3 + "/" + 'order'
         orderId = BinanceApi._call_binance_api(
             url, http_method='POST',
             symbol=currency_1 + currency_2,
-            quantity=quantity,
-            price=price,
-            side=side,
+            quantity="{:0.0{}f}".format(quantity,6),
+            price="{:0.0{}f}".format(price, 2),
+            side=type,
             type='LIMIT',
             timestamp=timestamp,
             timeInForce='GTC'
@@ -104,7 +104,9 @@ class BinanceApi:
         timestamp = BinanceApi._calculateTimestamp()
         url = "/api/" + API_VERSION_3 + "/" + 'myTrades' + '?limit=' + str(limit) + '&symbol=' + currency_1 + currency_2 \
               + '&timestamp=' + str(timestamp)
-        return BinanceApi._call_binance_api(url, 'GET', limit = limit, symbol=currency_1 + currency_2, timestamp=timestamp)
+        data = BinanceApi._call_binance_api(url, 'GET', limit = limit, symbol=currency_1 + currency_2, timestamp=timestamp)
+        newData = BinanceApi._create_exmo_my_trades(data)
+        return newData
 
 
     @staticmethod
@@ -182,5 +184,15 @@ class BinanceApi:
             newObj['date'] = obj['time']
             newObj['price'] = obj['price']
             newObj['quantity'] = obj['qty']
+            newData.append(newObj)
+        return newData
+
+
+    @staticmethod
+    def _create_exmo_my_trades(data):
+        newData = []
+        for obj in data:
+            newObj = {}
+            newObj['order_id'] = obj['orderId']
             newData.append(newObj)
         return newData

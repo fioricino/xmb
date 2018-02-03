@@ -25,7 +25,7 @@ if __name__ == '__main__':
     # api.is_order_partially_completed(7279440)
     # api.cancel_order(7279440)
     # api.get_balances()
-    # api.create_order('ETC','ETH',0.08,0.5,'SELL')
+    # api.create_order('BTC','USDT',0.0012,8990.000001,'SELL')
     # api.get_trades('ETC','ETH')
     # api.get_user_trades('ETC','ETH',0,500)
 

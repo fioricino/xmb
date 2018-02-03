@@ -97,7 +97,7 @@ class TrendAnalyzer:
             last_derivative = derivative_func.iloc[index]
             profit_markup = abs(self._profit_multiplier * last_derivative) + self._profit_free_weight
             reserve_markup = abs(self._reserve_multiplier * last_derivative)
-            period = self._mean_price_period
+            period = self._mean_price_period * 1000
             mean_price = self._calculate_mean_price(trades, period)
             tries_count = 0
             while mean_price is None and tries_count < 10:
@@ -106,7 +106,7 @@ class TrendAnalyzer:
             if mean_price is None:
                 raise ValueError('Cannot calculate mean price')
             logger.debug('Deal time: {}\nDeal id: {}\nLast derivative: {}\nProfit markup: {}\nMean price: {}'.format(
-                time.ctime(int(trades[-1]['date'])), trades[-1]['trade_id'], last_derivative, profit_markup, mean_price
+                time.ctime(int(trades[-1]['date']/1000)), trades[-1]['trade_id'], last_derivative, profit_markup, mean_price
             ))
 
             if last_derivative >= 0:
@@ -114,6 +114,7 @@ class TrendAnalyzer:
             if last_derivative < 0:
                 return 'DOWN', profit_markup, reserve_markup, mean_price
         except:
+            logger.exception('Cannot analyze')
             return None, None, None, None
 
     def _calculate_mean_price(self, deals, mean_price_period):
