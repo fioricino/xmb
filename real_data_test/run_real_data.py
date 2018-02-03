@@ -3,10 +3,11 @@ import json
 import logging
 import os
 
+from sqlite_api import SQLiteStorage
+
 logging.basicConfig(level=logging.INFO)
 
 from exmo_general import Worker
-from json_api import JsonStorage
 from real_data_test.market_simulator import MarketSimulator
 from trend_analyze import TrendAnalyzer
 from logging.handlers import RotatingFileHandler
@@ -84,10 +85,11 @@ def run(cfg, base_folder, handlers):
     handlers = create_handlers(logs_dir)
     archive_dir = os.path.join(run_folder, 'archive')
     os.makedirs(archive_dir)
-    sim = MarketSimulator('deals_5day', initial_btc_balance=args['max_profit_orders_down'][0] * 0.0011,
+    sim = MarketSimulator('deals', initial_btc_balance=args['max_profit_orders_down'][0] * 0.0011,
                           initial_usd_balance=args['max_profit_orders_up'][0] * 12,
                           stock_fee=cfg['stock_fee'], last_deals=cfg['last_deals'])
-    storage = JsonStorage(os.path.join(run_folder, 'orders.json'), archive_dir)
+    storage = SQLiteStorage(os.path.join(run_folder, 'test.db'))
+    # storage = JsonStorage(os.path.join(run_folder, 'orders.json'), archive_dir)
 
     ta = TrendAnalyzer(**cfg)
     ta._current_time = lambda: sim.timestamp
@@ -186,7 +188,7 @@ configs = [dict(cfg) for cfg in product]
 handlers = []
 for cfg in configs:
     try:
-        handlers = run(cfg, 'test_fixes', handlers)
+        handlers = run(cfg, 'test_sqlite', handlers)
     except:
         logger.exception('Error')
 
