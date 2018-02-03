@@ -7,15 +7,16 @@ from collections import defaultdict
 from datetime import timedelta, datetime
 from pprint import pprint
 
+from binance_api import BinanceApi
 from exmo_api import ExmoApi
 
-FEE = 0.002
+FEE = 0.001
 
 PERIOD = timedelta(hours=19)
 START_TIME = datetime(2018, 2, 3, 0, 0, 0)
 
-ORDER_FILE = r'real_run\orders.json'
-ARCHIVE_FOLDER = r'real_run\archive'
+ORDER_FILE = r'binance\real_run\orders.json'
+ARCHIVE_FOLDER = r'binance\real_run\archive'
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -23,7 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--secret', type=str, help='Api secret')
     sysargs = parser.parse_args(sys.argv[1:])
 
-    exmo_api = ExmoApi(sysargs.key, sysargs.secret)
+    exmo_api = BinanceApi()
 
     orders = {}
     with open(ORDER_FILE, 'r') as f:
@@ -34,7 +35,7 @@ if __name__ == '__main__':
             order = json.load(f)
             orders[str(order['order_id'])] = order
 
-    ds = exmo_api.get_user_trades('BTC', 'USD', limit=200)
+    ds = exmo_api.get_user_trades('BTC', 'USDT', limit=200)
     deals = defaultdict(list)
     for d in ds:
         deals[str(d['order_id'])].append(d)
@@ -66,8 +67,8 @@ if __name__ == '__main__':
             related_dealset = deals[related_order_id]
             for deal in dealset:
                 for related_deal in related_dealset:
-                    if datetime.fromtimestamp(int(deal['date'])) >= START_TIME and datetime.fromtimestamp(
-                            int(related_deal['date'])) > START_TIME:
+                    if datetime.fromtimestamp(int(deal['date'])/1000) >= START_TIME and datetime.fromtimestamp(
+                            int(related_deal['date'])/1000) > START_TIME:
                         ok_related_deals.append(deal)
                         ok_related_deals.append(related_deal)
                     else:
@@ -81,10 +82,10 @@ if __name__ == '__main__':
     for d in ok_deals.values():
         if d['type'] == 'buy':
             c['BTC'] += float(d['quantity']) * (1 - FEE)
-            c['USD'] -= float(d['price']) * float(d['quantity'])
+            c['USDT'] -= float(d['price']) * float(d['quantity'])
         else:
             c['BTC'] -= float(d['quantity'])
-            c['USD'] += float(d['price']) * float(d['quantity']) * (1 - FEE)
+            c['USDT'] += float(d['price']) * float(d['quantity']) * (1 - FEE)
 
     print(c)
 

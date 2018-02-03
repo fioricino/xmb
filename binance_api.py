@@ -201,5 +201,14 @@ class BinanceApi:
             newObj['price'] = obj['price']
             newObj['quantity'] = obj['qty']
             newObj['trade_id'] = obj['id']
+            newObj['date'] = obj['time']
+            newObj['type'] = BinanceApi._chooseRightType(obj)
             newData.append(newObj)
         return newData
+
+    @staticmethod
+    def _chooseRightType(obj):
+        if obj['isBuyer'] is True:
+            return 'buy'
+        else:
+            return 'sell'
