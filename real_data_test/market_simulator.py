@@ -94,6 +94,9 @@ class MarketSimulator:
     def get_max_timestamp(self):
         return int(self.deals[-1]['date'])
 
+    def get_user_trades(self, currency_1, currency_2, offset=0, limit=100):
+        return None
+
     def get_trades(self, currency_1, currency_2):
         return self.deals[self.index - self._last_deals:self.index - 1]
 

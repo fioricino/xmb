@@ -6,6 +6,22 @@ from exceptions import ApiError
 
 logger = logging.getLogger('xmb')
 
+
+class Lazy:
+    def __init__(self, func, *params):
+        self.func = func
+        self.params = params
+        self.initialized = False
+        self.value = None
+
+    def get_value(self):
+        if self.initialized:
+            return self.value
+        self.value = self.func(*self.params)
+        self.initialized = True
+        return self.value
+
+
 class Worker:
     def __init__(self, api,
                  storage,
@@ -102,34 +118,42 @@ class Worker:
         all_orders = self._storage.get_open_orders()
         open_orders = [o for o in all_orders if o['status'] == 'OPEN']
         wait_orders = [o for o in all_orders if o['status'] == 'WAIT_FOR_PROFIT']
+        user_trades = Lazy(self._api.get_user_trades, self._currency_1, self._currency_2)
         if open_orders:
-            self._handle_open_orders(open_orders)
+            self._handle_open_orders(open_orders, user_trades)
         if wait_orders:
-            self._handle_orders_wait_for_profit(wait_orders, open_orders)
+            self._handle_orders_wait_for_profit(wait_orders, open_orders, user_trades)
         self._make_reserve()
 
-    def _handle_open_orders(self, open_orders):
+    def _handle_open_orders(self, open_orders, user_trades):
 
         try:
             market_open_orders = [str(order['order_id']) for order in
                                   self._api.get_open_orders(self._currency_1, self._currency_2)]
             for order in open_orders:
-                self._handle_open_order(market_open_orders, order)
+                self._handle_open_order(market_open_orders, order, user_trades)
         except Exception as e:
             logger.exception('Cannot handle open orders')
 
-    def _handle_open_order(self, market_open_orders, order):
+    def _handle_open_order(self, market_open_orders, order, user_trades):
         try:
             if str(order['order_id']) in market_open_orders:
                 # order still open
                 if order['order_type'] == 'RESERVE':
                     # open profit orders can be ignored
-                    self._handle_open_reserve_order(order)
+                    self._handle_open_reserve_order(order, user_trades)
             else:
+                if not self._is_order_in_trades(order, user_trades):
+                    logger.error('Something strange happened. Order {} is completed, but not in trades'.format(
+                        order['order_id']))
+                    return
                 # order completed
                 self._handle_completed_order(order)
         except Exception as e:
             logger.exception('Cannot handle order: {}'.format(order['order_id']))
+
+    def _is_order_in_trades(self, order, user_trades):
+        return order['order_id'] in [str(t['order_id']) for t in user_trades.get_value()]
 
     def _handle_completed_order(self, order):
         if order['order_type'] == 'PROFIT':
@@ -150,7 +174,7 @@ class Worker:
         self._storage.update_order_status(order['order_id'], 'WAIT_FOR_PROFIT', self._get_time())
         self._create_profit_order(order)
 
-    def _handle_open_reserve_order(self, order):
+    def _handle_open_reserve_order(self, order, user_trades):
         profile, profit_markup, reserve_markup, mean_price = self._advisor.get_advice()
         if order['profile'] == profile:
             my_need_price = self._calculate_desired_reserve_price(mean_price, profile, reserve_markup)
@@ -158,7 +182,7 @@ class Worker:
                     order['order_data']['price']) * self._reserve_price_avg_price_deviation:
                 logger.debug('Reserve price has changed for order {} -> {}: {}'
                              .format(order['order_id'], order['order_data']['price'], my_need_price))
-                is_order_partially_completed = self._api.is_order_partially_completed(order['order_id'])
+                is_order_partially_completed = self._is_order_partially_completed(order, user_trades)
                 if is_order_partially_completed:
                     logger.debug('Order {} is partially completed'.format(order['order_id']))
                 else:
@@ -173,14 +197,18 @@ class Worker:
             else:
                 self._cancel_order(order)
 
-    def _handle_orders_wait_for_profit(self, wait_orders, open_orders):
+    def _is_order_partially_completed(self, order, user_trades):
+        return order['order_id'] in [str(t['order_id']) for t in
+                                     user_trades.get_value()]
+
+    def _handle_orders_wait_for_profit(self, wait_orders, open_orders, user_trades):
         try:
             for order in wait_orders:
-                self._handle_order_wait_for_profit(open_orders, order)
+                self._handle_order_wait_for_profit(open_orders, order, user_trades)
         except Exception as e:
             logger.exception('Cannot handle orders waiting for profit')
 
-    def _handle_order_wait_for_profit(self, open_orders, order):
+    def _handle_order_wait_for_profit(self, open_orders, order, user_trades):
         try:
             profit_orders = [o for o in open_orders if o['order_type'] == 'PROFIT'
                              and o['base_order']['order_id'] == order['order_id']]
@@ -189,7 +217,7 @@ class Worker:
 
             else:
                 for profit_order in profit_orders:
-                    self._recalculate_profit_order_price(profit_order)
+                    self._recalculate_profit_order_price(profit_order, user_trades)
         except Exception as e:
             logger.exception('Cannot handle order waiting for profit {}'.format(order['order_id']))
 
@@ -378,11 +406,17 @@ class Worker:
             return self._max_profit_orders_down
         raise ValueError('Invalid profile: ' + profile)
 
-    def _recalculate_profit_order_price(self, profit_order):
+    def _recalculate_profit_order_price(self, profit_order, ser_trades):
         profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
         if int(self._get_time() - profit_order['created']) > self._profit_order_lifetime \
                 and float(profit_order['profit_markup']) > self._profit_markup:
-            desired_profit_price = self._calculate_profit_price(float(profit_order['order_data']['quantity']),
+            if profit_order['profile'] == 'DOWN':
+                desired_profit_amount = self._calculate_profit_quantity(profit_order['base_order']['order_data'],
+                                                                        profit_order['profile'],
+                                                                        self._profit_markup)
+            else:
+                desired_profit_amount = float(profit_order['order_data']['quantity'])
+            desired_profit_price = self._calculate_profit_price(desired_profit_amount,
                                                                 profit_order['base_order']['order_data'],
                                                                 profit_order['profile'],
                                                                 self._profit_markup)

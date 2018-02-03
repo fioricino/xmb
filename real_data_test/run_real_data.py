@@ -84,8 +84,8 @@ def run(cfg, base_folder, handlers):
     handlers = create_handlers(logs_dir)
     archive_dir = os.path.join(run_folder, 'archive')
     os.makedirs(archive_dir)
-    sim = MarketSimulator('deals_5day', initial_btc_balance=0.01,
-                          initial_usd_balance=100,
+    sim = MarketSimulator('deals_5day', initial_btc_balance=args['max_profit_orders_down'][0] * 0.0011,
+                          initial_usd_balance=args['max_profit_orders_up'][0] * 12,
                           stock_fee=cfg['stock_fee'], last_deals=cfg['last_deals'])
     storage = JsonStorage(os.path.join(run_folder, 'orders.json'), archive_dir)
 
@@ -98,6 +98,8 @@ def run(cfg, base_folder, handlers):
     worker = Worker(sim, storage, advisor,
                     **cfg)
     worker._get_time = lambda: sim.timestamp
+    worker._is_order_partially_completed = lambda x, y: False
+    worker._is_order_in_trades = lambda x, y: True
     last_stat_timestamp = timestamp
     while timestamp < last_timestamp:
         try:
@@ -154,26 +156,26 @@ class InstantAdvisor:
 
 args = {
     'profit_price_avg_price_deviation': [0.001],
-    'profit_order_lifetime': [64],
+    'profit_order_lifetime': [64, 128],
     'period': [1],
     'currency_1': ['BTC'],
     'currency_2': ['USD'],
     'stock_fee': [0.002],
-    'profit_markup': [0.003],
+    'profit_markup': [0.002, 0.003],
     'reserve_price_avg_price_deviation': [0.002],
     'profit_price_prev_price_deviation': [0.0001],
     'currency_1_deal_size': [0.001],
-    'max_profit_orders_up': [3],
-    'max_profit_orders_down': [3],
+    'max_profit_orders_up': [10],
+    'max_profit_orders_down': [10],
     'same_profile_order_price_deviation': [0.01],
 
     'rolling_window': [6],
-    'profit_multiplier': [256],
+    'profit_multiplier': [192, 256],
     'mean_price_period': [16],
     'interpolation_degree': [20],
-    'profit_free_weight': [0.003],
+    'profit_free_weight': [0.0016, 0.002, 0.003],
     'reserve_multiplier': [0],
-    'suspend_order_deviation': [None, 0.03],
+    # 'suspend_order_deviation': [None, 0.03],
 
     'last_deals': [100]
 }
@@ -184,7 +186,7 @@ configs = [dict(cfg) for cfg in product]
 handlers = []
 for cfg in configs:
     try:
-        handlers = run(cfg, 'test_susp', handlers)
+        handlers = run(cfg, 'test_fixes', handlers)
     except:
         logger.exception('Error')
 
