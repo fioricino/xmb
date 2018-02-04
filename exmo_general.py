@@ -319,7 +319,7 @@ class Worker:
             order_profit_markup = self._profit_markup
         quantity = self._calculate_profit_quantity(base_order, base_profile, order_profit_markup)
 
-        price = self._calculate_profit_price(quantity, base_order, base_profile, profit_markup)
+        price = self._calculate_profit_price(quantity, base_order, base_profile, order_profit_markup)
         logger.info('Create new profit order for base order: {}'.format(base_order['order_id']))
         new_order_id = str(self._api.create_order(
             currency_1=self._currency_1,
