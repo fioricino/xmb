@@ -1,6 +1,4 @@
 import argparse
-import json
-import os
 import sys
 from collections import Counter
 from collections import defaultdict
@@ -8,14 +6,14 @@ from datetime import timedelta, datetime
 from pprint import pprint
 
 from exmo_api import ExmoApi
+from sqlite_api import SQLiteStorage
 
 FEE = 0.002
 
 PERIOD = timedelta(hours=19)
 START_TIME = datetime(2018, 2, 3, 0, 0, 0)
 
-ORDER_FILE = r'real_run\orders.json'
-ARCHIVE_FOLDER = r'real_run\archive'
+ORDER_FILE = r'real_run\orders.db'
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -26,13 +24,14 @@ if __name__ == '__main__':
     exmo_api = ExmoApi(sysargs.key, sysargs.secret)
 
     orders = {}
-    with open(ORDER_FILE, 'r') as f:
-        fl = json.load(f)
-        orders.update(fl)
-    for a in os.listdir(ARCHIVE_FOLDER):
-        with open(os.path.join(ARCHIVE_FOLDER, a)) as f:
-            order = json.load(f)
-            orders[str(order['order_id'])] = order
+
+    st = SQLiteStorage(ORDER_FILE)
+    stored_orders = st.get_open_orders()
+    for order in stored_orders:
+        orders[order['order_id']] = order
+    archive_orders = st.get_archive_completed_orders()
+    for order in archive_orders:
+        orders[order['order_id']] = order
 
     ds = exmo_api.get_user_trades('BTC', 'USD', limit=200)
     deals = defaultdict(list)

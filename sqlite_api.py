@@ -12,7 +12,7 @@ class BaseModel(Model):
         database = database_proxy
 
 
-class Order(BaseModel):
+class BaseOrder(BaseModel):
     order_id = CharField(unique=True)
     status = CharField()
     profile = CharField()
@@ -25,12 +25,15 @@ class Order(BaseModel):
     pair = CharField(null=True)
     amount = FloatField(null=True)
     trade_id = CharField(null=True)
-    base_order = ForeignKeyField('self', null=True, to_field='order_id')
     profit_markup = FloatField(null=True)
 
 
-class ArchiveOrder(Order):
-    pass
+class Order(BaseOrder):
+    base_order = ForeignKeyField('self', null=True, to_field='order_id')
+
+
+class ArchiveOrder(BaseOrder):
+    base_order = ForeignKeyField('self', null=True, to_field='order_id')
 
 
 class SQLiteStorage:
@@ -67,7 +70,12 @@ class SQLiteStorage:
         ords = Order.select()
         return [self._map_order(o) for o in ords]
 
-    def _map_order(self, ord):
+    def get_archive_completed_orders(self):
+        ords = ArchiveOrder.select().where(
+            (ArchiveOrder.status == 'COMPLETED') | (ArchiveOrder.status == 'WAIT_FOR_PROFIT'))
+        return [self._map_order(o) for o in ords]
+
+    def _map_order(self, ord, is_archive=False):
         if ord is None:
             return None
         order = {'order_id': str(ord.order_id),

@@ -311,8 +311,12 @@ class Worker:
         # if profit_markup < self._profit_markup:
         #     logger.debug('Profit markup too small: {:.4f} < {}. Will not create profit order for reserve order {}'
         #                  .format(profit_markup, self._profit_markup, base_order['order_id']))
-        order_profit_markup = max(profit_markup,
-                                  self._profit_markup) if base_profile == profile else self._profit_markup
+
+        if base_profile == profile:
+            order_profit_markup = max(profit_markup,
+                                      self._profit_markup)
+        else:
+            order_profit_markup = self._profit_markup
         quantity = self._calculate_profit_quantity(base_order, base_profile, order_profit_markup)
 
         price = self._calculate_profit_price(quantity, base_order, base_profile, profit_markup)
