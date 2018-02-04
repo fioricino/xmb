@@ -33,7 +33,7 @@ class Order(BaseOrder):
 
 
 class ArchiveOrder(BaseOrder):
-    base_order = ForeignKeyField('self', null=True, to_field='order_id')
+    base_order_id = CharField(null=True)
 
 
 class SQLiteStorage:
@@ -73,7 +73,7 @@ class SQLiteStorage:
     def get_archive_completed_orders(self):
         ords = ArchiveOrder.select().where(
             (ArchiveOrder.status == 'COMPLETED') | (ArchiveOrder.status == 'WAIT_FOR_PROFIT'))
-        return [self._map_order(o) for o in ords]
+        return [self._map_order(o, True) for o in ords]
 
     def _map_order(self, ord, is_archive=False):
         if ord is None:
@@ -90,8 +90,11 @@ class SQLiteStorage:
                  'pair': ord.pair,
                  'amount': ord.amount,
                  'profit_markup': ord.profit_markup,
-                 'trade_id': ord.trade_id,
-                 'base_order': self._map_order(ord.base_order)}
+                 'trade_id': ord.trade_id}
+        if is_archive:
+            order['base_order_id'] = ord.base_order_id
+        else:
+            order['base_order'] = self._map_order(ord.base_order)
         return order
 
     def delete(self, order_id, status, completed):
@@ -111,7 +114,7 @@ class SQLiteStorage:
                                      pair=order.pair,
                                      amount=order.amount,
                                      profit_markup=order.profit_markup,
-                                     base_order=order.base_order)
+                                     base_order_id=order.base_order.order_id if order.base_order is not None else None)
         archive_order.status = status
         if order.order_type == 'PROFIT' and order.status == 'COMPLETED' \
                 or order.status == 'CANCELED':
