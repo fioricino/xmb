@@ -51,8 +51,8 @@ if __name__ == '__main__':
         if order['order_type'] == 'PROFIT':
             continue
         else:
-            related_orders = [o for o in orders.values() if o['base_order'] is not None
-                              and str(o['base_order']['order_id']) == order_id and o['status'] == 'COMPLETED']
+            related_orders = [o for o in orders.values() if 'base_order_id' in o
+                              and str(o['base_order_id']) == order_id and o['status'] == 'COMPLETED']
         if not related_orders:
             continue
         ok_related_deals = []
