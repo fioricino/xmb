@@ -114,15 +114,17 @@ class Worker:
         self._interrupted = True
 
     def main_flow(self):
-        # Получаем список активных ордеров
-        all_orders = self._storage.get_open_orders()
-        open_orders = [o for o in all_orders if o['status'] == 'OPEN']
-        wait_orders = [o for o in all_orders if o['status'] == 'WAIT_FOR_PROFIT']
         user_trades = Lazy(self._api.get_user_trades, self._currency_1, self._currency_2)
+
+        open_orders = [o for o in self._storage.get_open_orders() if o['status'] == 'OPEN']
+
         if open_orders:
             self._handle_open_orders(open_orders, user_trades)
+
+        wait_orders = [o for o in self._storage.get_open_orders() if o['status'] == 'WAIT_FOR_PROFIT']
+
         if wait_orders:
-            self._handle_orders_wait_for_profit(wait_orders, open_orders, user_trades)
+            self._handle_orders_wait_for_profit(wait_orders, user_trades)
         self._make_reserve()
 
     def _handle_open_orders(self, open_orders, user_trades):
@@ -178,10 +180,10 @@ class Worker:
         profile, profit_markup, reserve_markup, mean_price = self._advisor.get_advice()
         if order['profile'] == profile:
             my_need_price = self._calculate_desired_reserve_price(mean_price, profile, reserve_markup)
-            if math.fabs(my_need_price - float(order['order_data']['price'])) > float(
-                    order['order_data']['price']) * self._reserve_price_avg_price_deviation:
+            if math.fabs(my_need_price - float(order['price'])) > float(
+                    order['price']) * self._reserve_price_avg_price_deviation:
                 logger.debug('Reserve price has changed for order {} -> {}: {}'
-                             .format(order['order_id'], order['order_data']['price'], my_need_price))
+                             .format(order['order_id'], order['price'], my_need_price))
                 is_order_partially_completed = self._is_order_partially_completed(order, user_trades)
                 if is_order_partially_completed:
                     logger.debug('Order {} is partially completed'.format(order['order_id']))
@@ -201,16 +203,16 @@ class Worker:
         return order['order_id'] in [str(t['order_id']) for t in
                                      user_trades.get_value()]
 
-    def _handle_orders_wait_for_profit(self, wait_orders, open_orders, user_trades):
+    def _handle_orders_wait_for_profit(self, wait_orders, user_trades):
         try:
             for order in wait_orders:
-                self._handle_order_wait_for_profit(open_orders, order, user_trades)
+                self._handle_order_wait_for_profit(order, user_trades)
         except Exception as e:
             logger.exception('Cannot handle orders waiting for profit')
 
-    def _handle_order_wait_for_profit(self, open_orders, order, user_trades):
+    def _handle_order_wait_for_profit(self, order, user_trades):
         try:
-            profit_orders = [o for o in open_orders if o['order_type'] == 'PROFIT'
+            profit_orders = [o for o in self._storage.get_open_orders() if o['order_type'] == 'PROFIT'
                              and o['base_order']['order_id'] == order['order_id']]
             if not profit_orders:
                 self._create_profit_order(order)
@@ -246,7 +248,7 @@ class Worker:
                 # TODO check
                 min_price_diff = min(
                     [abs(float(
-                        o['order_data']['price'] if o['order_type'] == 'RESERVE' else o['base_order']['order_data'][
+                        o['price'] if o['order_type'] == 'RESERVE' else o['base_order'][
                             'price']) - avg_price) for o in same_profile_orders]) / avg_price
                 # Првоеряем минимальное отклонение цены от существующих ордеров:
                 if min_price_diff <= self._same_profile_order_price_deviation:
@@ -311,9 +313,9 @@ class Worker:
         #                  .format(profit_markup, self._profit_markup, base_order['order_id']))
         order_profit_markup = max(profit_markup,
                                   self._profit_markup) if base_profile == profile else self._profit_markup
-        quantity = self._calculate_profit_quantity(base_order['order_data'], base_profile, order_profit_markup)
+        quantity = self._calculate_profit_quantity(base_order, base_profile, order_profit_markup)
 
-        price = self._calculate_profit_price(quantity, base_order['order_data'], base_profile, profit_markup)
+        price = self._calculate_profit_price(quantity, base_order, base_profile, profit_markup)
         logger.info('Create new profit order for base order: {}'.format(base_order['order_id']))
         new_order_id = str(self._api.create_order(
             currency_1=self._currency_1,
@@ -411,16 +413,16 @@ class Worker:
         if int(self._get_time() - profit_order['created']) > self._profit_order_lifetime \
                 and float(profit_order['profit_markup']) > self._profit_markup:
             if profit_order['profile'] == 'DOWN':
-                desired_profit_amount = self._calculate_profit_quantity(profit_order['base_order']['order_data'],
+                desired_profit_amount = self._calculate_profit_quantity(profit_order['base_order'],
                                                                         profit_order['profile'],
                                                                         self._profit_markup)
             else:
-                desired_profit_amount = float(profit_order['order_data']['quantity'])
+                desired_profit_amount = float(profit_order['quantity'])
             desired_profit_price = self._calculate_profit_price(desired_profit_amount,
-                                                                profit_order['base_order']['order_data'],
+                                                                profit_order['base_order'],
                                                                 profit_order['profile'],
                                                                 self._profit_markup)
-            if abs(desired_profit_price - float(profit_order['order_data'][
+            if abs(desired_profit_price - float(profit_order[
                                                     'price'])) / desired_profit_price > self._profit_price_prev_price_deviation \
                     and abs(
                                 desired_profit_price - avg_price) / desired_profit_price > self._profit_price_avg_price_deviation:

@@ -11,7 +11,7 @@ from exmo_api_proxy import ExmoApiProxy
 from exmo_general import Worker
 
 # run period in seconds
-from json_api import JsonStorage
+from sqlite_api import SQLiteStorage
 from trend_analyze import TrendAnalyzer
 
 logger = logging.getLogger('xmb')
@@ -52,8 +52,8 @@ args = {
     'reserve_price_avg_price_deviation': 0.002,
     'profit_price_prev_price_deviation': 0.0001,
     'currency_1_deal_size': 0.001,
-    'max_profit_orders_up': 13,
-    'max_profit_orders_down': 13,
+    'max_profit_orders_up': 15,
+    'max_profit_orders_down': 15,
     'same_profile_order_price_deviation': 0.01
 }
 
@@ -76,8 +76,10 @@ if __name__ == '__main__':
     exmo_api = ExmoApi(sysargs.key, sysargs.secret)
     exmo_public_api = ExmoApiProxy(proxy_host='localhost', proxy_port=9050)
 
-    storage = JsonStorage(order_file=os.path.join('real_run', 'orders.json'),
-                          archive_folder=os.path.join('real_run', 'archive'))
+    # storage = JsonStorage(order_file=os.path.join('real_run', 'orders.json'),
+    #                       archive_folder=os.path.join('real_run', 'archive'))
+
+    storage = SQLiteStorage(os.path.join('real_run', 'orders.db'))
 
     trend_analyzer = TrendAnalyzer(**stat_args)
 
