@@ -287,6 +287,8 @@ class Worker:
             # TODO fix
             raise ApiError('Order not found: {}'.format(new_order_id))
         new_order = new_orders[0]
+        new_order['quantity'] = str(my_amount)
+        new_order['price'] = str(my_need_price)
         stored_order = self._storage.create_order(new_order, profile, 'RESERVE', base_order=None,
                                                   created=self._get_time())
         logger.info('Created new reserve order:\n{}'.format(stored_order))
@@ -339,11 +341,17 @@ class Worker:
         new_orders = [order for order in open_orders if str(order['order_id']) == new_order_id]
         if not new_orders:
             # Order already completed
-            user_trades = self._get_user_trades()
-            new_orders = [order for order in user_trades if str(order['order_id']) == new_order_id]
+            # Fixme what to do in this case?
+            time.sleep(1)
+            new_orders = [order for order in open_orders if str(order['order_id']) == new_order_id]
+            if not new_orders:
+                user_trades = self._get_user_trades()
+                new_orders = [order for order in user_trades if str(order['order_id']) == new_order_id]
         if not new_orders:
             raise ApiError('Order not found: {}'.format(new_order_id))
         new_order = new_orders[0]
+        new_order['quantity'] = str(quantity)
+        new_order['price'] = str(price)
 
         stored_order = self._storage.create_order(new_order, base_profile, 'PROFIT', base_order=base_order,
                                                   created=self._get_time(), profit_markup=order_profit_markup)
