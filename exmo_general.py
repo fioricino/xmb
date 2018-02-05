@@ -275,8 +275,10 @@ class Worker:
             # Order already completed
             # Fixme what to do in this case?
             time.sleep(1)
-            user_trades = self._get_user_trades()
-            new_orders = [order for order in user_trades if str(order['order_id']) == new_order_id]
+            new_orders = [order for order in open_orders if str(order['order_id']) == new_order_id]
+            if not new_orders:
+                user_trades = self._get_user_trades()
+                new_orders = [order for order in user_trades if str(order['order_id']) == new_order_id]
         if not new_orders:
             # TODO fix
             raise ApiError('Order not found: {}'.format(new_order_id))
