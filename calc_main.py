@@ -24,4 +24,6 @@ if __name__ == '__main__':
     st = SQLiteStorage(ORDER_FILE)
 
     calc = Calc(exmo_api, st, START_TIME, FEE)
-    pprint(calc.get_profit())
+    ok_deals, profit = calc.get_profit()
+    pprint(ok_deals)
+    pprint(profit)

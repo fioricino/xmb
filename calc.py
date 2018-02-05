@@ -72,4 +72,4 @@ class Calc:
                 c['BTC'] -= float(d['quantity'])
                 c['USD'] += float(d['price']) * float(d['quantity']) * (1 - self._fee)
 
-        return c
+        return ok_deals, c

@@ -120,10 +120,12 @@ def run(cfg, base_folder, handlers):
         except:
             break
 
-    stat = get_stats(sim, storage, worker._stock_fee)
+    ok_deals, stat = get_stats(sim, storage, worker._stock_fee)
     logger.info('Finished.\n{}'.format(stat))
     with open(os.path.join(run_folder, 'stats.json'), 'w') as f:
         json.dump(stat, f, indent=4)
+    with open(os.path.join(run_folder, 'ok_deals.json'), 'w') as f:
+        json.dump(ok_deals, f, indent=4)
     return handlers
 
 
