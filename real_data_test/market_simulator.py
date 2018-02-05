@@ -11,6 +11,7 @@ class MarketSimulator:
     def __init__(self, folder, initial_btc_balance, initial_usd_balance,
                  stock_fee, initial_timestamp=None, last_deals=100):
         self.balances = {'BTC': initial_btc_balance, 'USD': initial_usd_balance}
+        self.initial_balances = {'BTC': initial_btc_balance, 'USD': initial_usd_balance}
         self.balances_in_orders = {'BTC': 0, 'USD': 0}
         self.stock_fee = stock_fee
         self.index = 0
@@ -146,3 +147,7 @@ class MarketSimulator:
     def get_balances_with_orders(self):
         return {'USD': self.balances['USD']
                        + self.balances_in_orders['USD'], 'BTC': self.balances['BTC'] + self.balances_in_orders['BTC']}
+
+    def get_profit(self):
+        return {'BTC': self.balances['BTC'] - self.initial_balances['BTC'],
+                'USD': self.balances['USD'] - self.initial_balances['USD']}

@@ -56,7 +56,7 @@ def get_stats(sim, storage):
     stat = {'USD': sim.balances['USD'], 'BTC': sim.balances['BTC'],
             # 'BTC_ord': sim.get_balances_with_orders()['BTC'],
             # 'USD_ORD': sim.get_balances_with_orders()['USD'],
-            'USD_prof': storage.get_stats()['UP'], 'BTC_prof': storage.get_stats()['DOWN']
+            'USD_prof': sim.get_stats()['USD'], 'BTC_prof': sim.get_stats()['BTC']
             }
     # 'USD_theor': get_theor_balances(storage, sim, 0.002)['USD'],
     # 'BTC_theor': get_theor_balances(storage, sim, 0.002)['BTC']}
