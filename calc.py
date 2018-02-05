@@ -12,9 +12,9 @@ from sqlite_api import SQLiteStorage
 FEE = 0.001
 
 PERIOD = timedelta(hours=19)
-START_TIME = datetime(2018, 2, 3, 0, 0, 0)
+START_TIME = datetime(2018, 2, 5, 0, 0, 0)
 
-ORDER_FILE = r'real_run\orders.db'
+ORDER_FILE = r'binance\real_run\orders.db'
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
