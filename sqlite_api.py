@@ -70,12 +70,16 @@ class SQLiteStorage:
         ords = Order.select()
         return [self._map_order(o) for o in ords]
 
+    def get_archive_orders(self):
+        ords = ArchiveOrder.select()
+        return [self._map_order(o, True, True) for o in ords]
+
     def get_archive_completed_orders(self):
         ords = ArchiveOrder.select().where(
             (ArchiveOrder.status == 'COMPLETED') | (ArchiveOrder.status == 'WAIT_FOR_PROFIT'))
         return [self._map_order(o, True) for o in ords]
 
-    def _map_order(self, ord, is_archive=False):
+    def _map_order(self, ord, is_archive=False, full_map=False):
         if ord is None:
             return None
         order = {'order_id': str(ord.order_id),
@@ -92,7 +96,16 @@ class SQLiteStorage:
                  'profit_markup': ord.profit_markup,
                  'trade_id': ord.trade_id}
         if is_archive:
-            order['base_order_id'] = ord.base_order_id
+            if full_map:
+                if ord.base_order_id is not None:
+                    base_order = ArchiveOrder.get_or_none(order_id=ord.base_order_id)
+                    if base_order is None:
+                        base_order = Order.get_or_none(order_id=ord.base_order_id)
+                    order['base_order'] = self._map_order(base_order, True, False)
+                else:
+                    order['base_order'] = None
+            else:
+                order['base_order_id'] = ord.base_order_id
         else:
             order['base_order'] = self._map_order(ord.base_order)
         return order
@@ -105,7 +118,7 @@ class SQLiteStorage:
                                      status=order.status,
                                      profile=order.profile,
                                      created=order.created,
-                                     completed=order.completed,
+                                     completed=datetime.fromtimestamp(completed),
                                      type=order.type,
                                      order_type=order.order_type,
                                      price=order.price,
