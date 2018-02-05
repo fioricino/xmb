@@ -2,7 +2,9 @@ import itertools
 import json
 import logging
 import os
+from datetime import datetime
 
+from calc import Calc
 from sqlite_api import SQLiteStorage
 
 logging.basicConfig(level=logging.INFO)
@@ -52,15 +54,17 @@ logger.addHandler(ch)
 #     return balances
 
 
-def get_stats(sim, storage):
-    stat = {'USD': sim.balances['USD'], 'BTC': sim.balances['BTC'],
-            # 'BTC_ord': sim.get_balances_with_orders()['BTC'],
-            # 'USD_ORD': sim.get_balances_with_orders()['USD'],
-            'USD_prof': sim.get_profit()['USD'], 'BTC_prof': sim.get_profit()['BTC']
-            }
-    # 'USD_theor': get_theor_balances(storage, sim, 0.002)['USD'],
-    # 'BTC_theor': get_theor_balances(storage, sim, 0.002)['BTC']}
-    return stat
+def get_stats(sim, storage, stock_fee):
+    calc = Calc(sim, storage, datetime(2000, 1, 1, 0, 0, 0), stock_fee)
+    return calc.get_profit()
+    # stat = {'USD': sim.balances['USD'], 'BTC': sim.balances['BTC'],
+    #         # 'BTC_ord': sim.get_balances_with_orders()['BTC'],
+    #         # 'USD_ORD': sim.get_balances_with_orders()['USD'],
+    #         'USD_prof': sim.get_profit()['USD'], 'BTC_prof': sim.get_profit()['BTC']
+    #         }
+    # # 'USD_theor': get_theor_balances(storage, sim, 0.002)['USD'],
+    # # 'BTC_theor': get_theor_balances(storage, sim, 0.002)['BTC']}
+    # return stat
 
 
 def run(cfg, base_folder, handlers):
@@ -111,12 +115,12 @@ def run(cfg, base_folder, handlers):
             advisor.update_timestamp(timestamp)
             worker.main_flow()
             if timestamp - last_stat_timestamp >= 1000:
-                logger.info('Stats: {}'.format(get_stats(sim, storage)))
+                logger.info('Stats: {}'.format(get_stats(sim, storage, worker._stock_fee)))
                 last_stat_timestamp = timestamp
         except:
             break
 
-    stat = get_stats(sim, storage)
+    stat = get_stats(sim, storage, worker._stock_fee)
     logger.info('Finished.\n{}'.format(stat))
     with open(os.path.join(run_folder, 'stats.json'), 'w') as f:
         json.dump(stat, f, indent=4)

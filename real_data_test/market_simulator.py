@@ -20,6 +20,7 @@ class MarketSimulator:
         self.deals = self.read_data(folder)
         self._set_initial_timestamp(initial_timestamp)
         self._last_deals = last_deals
+        self._trades = []
 
 
     def _set_initial_timestamp(self, initial_timestamp):
@@ -96,7 +97,7 @@ class MarketSimulator:
         return int(self.deals[-1]['date'])
 
     def get_user_trades(self, currency_1, currency_2, offset=0, limit=100):
-        return None
+        return self._trades
 
     def get_trades(self, currency_1, currency_2):
         return self.deals[self.index - self._last_deals:self.index - 1]
@@ -137,6 +138,7 @@ class MarketSimulator:
             self.balances_in_orders['BTC'] -= quantity
             logger.info('Amount: {} USD'.format(got))
         self.orders.pop(order['order_id'])
+        self._trades.append(order)
         logger.info(
             '{}: Balance: BTC: {:.6f}, USD: {:.2f}'.format(self.timestamp, self.balances['BTC'], self.balances['USD']))
         logger.info('{}: Balance (with orders): BTC: {:.6f}, USD: {:.2f}'.format(self.timestamp, self.balances['BTC']
