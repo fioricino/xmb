@@ -4,6 +4,8 @@ import time
 
 from exceptions import ApiError
 
+# from pympler.tracker import SummaryTracker
+
 logger = logging.getLogger('xmb')
 
 
@@ -101,10 +103,18 @@ class Worker:
     # TODO move
     def run(self):
         self._interrupted = False
+        # tracker = SummaryTracker()
+        # count = 0
+        # tracker.print_diff()
         while not self._interrupted:
             try:
+                # if count == 0:
+                #     tracker.print_diff()
                 self.main_flow()
                 time.sleep(self._period)
+                # count+=1
+                # if count % 100 == 1:
+                #     tracker.print_diff()
             except ApiError as e:
                 logger.exception('Merket api error')
             except Exception as e:
