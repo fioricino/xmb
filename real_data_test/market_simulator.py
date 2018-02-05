@@ -149,5 +149,5 @@ class MarketSimulator:
                        + self.balances_in_orders['USD'], 'BTC': self.balances['BTC'] + self.balances_in_orders['BTC']}
 
     def get_profit(self):
-        return {'BTC': self.balances['BTC'] - self.initial_balances['BTC'],
-                'USD': self.balances['USD'] - self.initial_balances['USD']}
+        return {'BTC': self.balances['BTC'] - self.initial_balances['BTC'] + self.balances_in_orders['BTC'],
+                'USD': self.balances['USD'] - self.initial_balances['USD'] + self.balances_in_orders['USD']}
