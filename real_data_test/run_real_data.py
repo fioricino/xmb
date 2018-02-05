@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 
 from calc import Calc
-from sqlite_api import SQLiteStorage
+from json_api import JsonStorage
 
 logging.basicConfig(level=logging.INFO)
 
@@ -92,8 +92,8 @@ def run(cfg, base_folder, handlers):
     sim = MarketSimulator('deals', initial_btc_balance=args['max_profit_orders_down'][0] * 0.0011,
                           initial_usd_balance=args['max_profit_orders_up'][0] * 12,
                           stock_fee=cfg['stock_fee'], last_deals=cfg['last_deals'])
-    storage = SQLiteStorage(os.path.join(run_folder, 'test.db'))
-    # storage = JsonStorage(os.path.join(run_folder, 'orders.json'), archive_dir)
+    # storage = SQLiteStorage(os.path.join(run_folder, 'test.db'))
+    storage = JsonStorage(os.path.join(run_folder, 'orders.json'), archive_dir)
 
     ta = TrendAnalyzer(**cfg)
     ta._current_time = lambda: sim.timestamp
@@ -114,9 +114,9 @@ def run(cfg, base_folder, handlers):
             sim.update_timestamp(timestamp)
             advisor.update_timestamp(timestamp)
             worker.main_flow()
-            if timestamp - last_stat_timestamp >= 1000:
-                logger.info('Stats: {}'.format(get_stats(sim, storage, worker._stock_fee)))
-                last_stat_timestamp = timestamp
+            # if timestamp - last_stat_timestamp >= 1000:
+            #     logger.info('Stats: {}'.format(get_stats(sim, storage, worker._stock_fee)))
+            #     last_stat_timestamp = timestamp
         except:
             break
 

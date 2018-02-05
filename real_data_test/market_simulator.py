@@ -79,7 +79,7 @@ class MarketSimulator:
             # self.balances['USD'] += quantity * price * (1 - self.stock_fee)
         self.order_id += 1
         self.orders[str(self.order_id)] = {'order_id': str(self.order_id), 'type': type, 'quantity': str(quantity),
-                                           'price': str(price), 'date': self.timestamp}
+                                           'price': str(price), 'date': self.timestamp, 'trade_id': str(self.order_id)}
         return str(self.order_id)
 
     def update_timestamp(self, timestamp):
