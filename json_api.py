@@ -38,7 +38,9 @@ class JsonStorage:
     def create_order(self, order, profile, order_type, created, base_order=None, profit_markup=None):
         order_to_store = {
             'order_id': str(order['order_id']),
-            'order_data': order,
+            'type': order['type'],
+            'price': order['price'],
+            'quantity': order['quantity'],
             'profile': profile,
             'order_type': order_type,
             'status': 'OPEN',
@@ -64,6 +66,16 @@ class JsonStorage:
                     stats[d['profile']] += float(d['profit_markup'])
         return stats
 
+    def get_archive_completed_orders(self):
+        orders = []
+        for a in os.listdir(self._archive_folder):
+            with open(os.path.join(self._archive_folder, a)) as f:
+                order = json.load(f)
+                if order['status'] == 'COMPLETED' or order['status'] == 'WAIT_FOR_PROFIT':
+                    if order['base_order'] is not None:
+                        order['base_order_id'] = order['base_order']['order_id']
+                    orders.append(order)
+        return orders
 
     def save_to_disk(self, obj, path):
         try:

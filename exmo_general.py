@@ -121,7 +121,8 @@ class Worker:
         if open_orders:
             self._handle_open_orders(open_orders, user_trades)
 
-        wait_orders = [o for o in self._storage.get_open_orders() if o['status'] == 'WAIT_FOR_PROFIT']
+        wait_orders = [o for o in self._storage.get_open_orders() if
+                       o['status'] == 'WAIT_FOR_PROFIT' or o['status'] == 'PROFIT_ORDER_CANCELED']
 
         if wait_orders:
             self._handle_orders_wait_for_profit(wait_orders, user_trades)
@@ -174,6 +175,8 @@ class Worker:
     def _handle_completed_reserve_order(self, order):
         logger.info('Reserve order {} completed'.format(order['order_id']))
         self._storage.update_order_status(order['order_id'], 'WAIT_FOR_PROFIT', self._get_time())
+        order['status'] = 'WAIT_FOR_PROFIT'
+
         self._create_profit_order(order)
 
     def _handle_open_reserve_order(self, order, user_trades):
@@ -224,6 +227,7 @@ class Worker:
             logger.exception('Cannot handle order waiting for profit {}'.format(order['order_id']))
 
     def _cancel_order(self, order):
+        logger.info('Cancel order {}'.format(order['order_id']))
         self._api.cancel_order(order['order_id'])
         self._storage.delete(order['order_id'], 'CANCELED', self._get_time())
 
@@ -275,12 +279,16 @@ class Worker:
             # Order already completed
             # Fixme what to do in this case?
             time.sleep(1)
-            user_trades = self._get_user_trades()
-            new_orders = [order for order in user_trades if str(order['order_id']) == new_order_id]
+            new_orders = [order for order in open_orders if str(order['order_id']) == new_order_id]
+            if not new_orders:
+                user_trades = self._get_user_trades()
+                new_orders = [order for order in user_trades if str(order['order_id']) == new_order_id]
         if not new_orders:
             # TODO fix
             raise ApiError('Order not found: {}'.format(new_order_id))
         new_order = new_orders[0]
+        new_order['quantity'] = str(my_amount)
+        new_order['price'] = str(my_need_price)
         stored_order = self._storage.create_order(new_order, profile, 'RESERVE', base_order=None,
                                                   created=self._get_time())
         logger.info('Created new reserve order:\n{}'.format(stored_order))
@@ -303,6 +311,7 @@ class Worker:
                     """
         # balances = self._api.get_balances()
         profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
+        base_status = base_order['status']
         base_profile = base_order['profile']
         # if profile != base_profile:
         #     logger.debug('Profile has changed: {}->{}. Will not create profit order for reserve order {}'
@@ -312,7 +321,7 @@ class Worker:
         #     logger.debug('Profit markup too small: {:.4f} < {}. Will not create profit order for reserve order {}'
         #                  .format(profit_markup, self._profit_markup, base_order['order_id']))
 
-        if base_profile == profile:
+        if base_status == 'WAIT_FOR_PROFIT':
             order_profit_markup = max(profit_markup,
                                       self._profit_markup)
         else:
@@ -332,11 +341,17 @@ class Worker:
         new_orders = [order for order in open_orders if str(order['order_id']) == new_order_id]
         if not new_orders:
             # Order already completed
-            user_trades = self._get_user_trades()
-            new_orders = [order for order in user_trades if str(order['order_id']) == new_order_id]
+            # Fixme what to do in this case?
+            time.sleep(1)
+            new_orders = [order for order in open_orders if str(order['order_id']) == new_order_id]
+            if not new_orders:
+                user_trades = self._get_user_trades()
+                new_orders = [order for order in user_trades if str(order['order_id']) == new_order_id]
         if not new_orders:
             raise ApiError('Order not found: {}'.format(new_order_id))
         new_order = new_orders[0]
+        new_order['quantity'] = str(quantity)
+        new_order['price'] = str(price)
 
         stored_order = self._storage.create_order(new_order, base_profile, 'PROFIT', base_order=base_order,
                                                   created=self._get_time(), profit_markup=order_profit_markup)
@@ -432,3 +447,5 @@ class Worker:
                                 desired_profit_price - avg_price) / desired_profit_price > self._profit_price_avg_price_deviation:
                 logger.debug('Profit markup has changed for order {}'.format(profit_order['order_id']))
                 self._cancel_order(profit_order)
+                self._storage.update_order_status(profit_order['base_order']['order_id'], 'PROFIT_ORDER_CANCELED',
+                                                  self._get_time())

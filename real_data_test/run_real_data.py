@@ -2,8 +2,10 @@ import itertools
 import json
 import logging
 import os
+from datetime import datetime
 
-from sqlite_api import SQLiteStorage
+from calc import Calc
+from json_api import JsonStorage
 
 logging.basicConfig(level=logging.INFO)
 
@@ -52,15 +54,17 @@ logger.addHandler(ch)
 #     return balances
 
 
-def get_stats(sim, storage):
-    stat = {'USD': sim.balances['USD'], 'BTC': sim.balances['BTC'],
-            # 'BTC_ord': sim.get_balances_with_orders()['BTC'],
-            # 'USD_ORD': sim.get_balances_with_orders()['USD'],
-            'USD_prof': storage.get_stats()['UP'], 'BTC_prof': storage.get_stats()['DOWN']
-            }
-    # 'USD_theor': get_theor_balances(storage, sim, 0.002)['USD'],
-    # 'BTC_theor': get_theor_balances(storage, sim, 0.002)['BTC']}
-    return stat
+def get_stats(sim, storage, stock_fee):
+    calc = Calc(sim, storage, datetime(2000, 1, 1, 0, 0, 0), stock_fee)
+    return calc.get_profit()
+    # stat = {'USD': sim.balances['USD'], 'BTC': sim.balances['BTC'],
+    #         # 'BTC_ord': sim.get_balances_with_orders()['BTC'],
+    #         # 'USD_ORD': sim.get_balances_with_orders()['USD'],
+    #         'USD_prof': sim.get_profit()['USD'], 'BTC_prof': sim.get_profit()['BTC']
+    #         }
+    # # 'USD_theor': get_theor_balances(storage, sim, 0.002)['USD'],
+    # # 'BTC_theor': get_theor_balances(storage, sim, 0.002)['BTC']}
+    # return stat
 
 
 def run(cfg, base_folder, handlers):
@@ -88,8 +92,8 @@ def run(cfg, base_folder, handlers):
     sim = MarketSimulator('deals', initial_btc_balance=args['max_profit_orders_down'][0] * 0.0011,
                           initial_usd_balance=args['max_profit_orders_up'][0] * 12,
                           stock_fee=cfg['stock_fee'], last_deals=cfg['last_deals'])
-    storage = SQLiteStorage(os.path.join(run_folder, 'test.db'))
-    # storage = JsonStorage(os.path.join(run_folder, 'orders.json'), archive_dir)
+    # storage = SQLiteStorage(os.path.join(run_folder, 'test.db'))
+    storage = JsonStorage(os.path.join(run_folder, 'orders.json'), archive_dir)
 
     ta = TrendAnalyzer(**cfg)
     ta._current_time = lambda: sim.timestamp
@@ -110,16 +114,18 @@ def run(cfg, base_folder, handlers):
             sim.update_timestamp(timestamp)
             advisor.update_timestamp(timestamp)
             worker.main_flow()
-            if timestamp - last_stat_timestamp >= 1000:
-                logger.info('Stats: {}'.format(get_stats(sim, storage)))
-                last_stat_timestamp = timestamp
+            # if timestamp - last_stat_timestamp >= 1000:
+            #     logger.info('Stats: {}'.format(get_stats(sim, storage, worker._stock_fee)))
+            #     last_stat_timestamp = timestamp
         except:
             break
 
-    stat = get_stats(sim, storage)
+    ok_deals, stat = get_stats(sim, storage, worker._stock_fee)
     logger.info('Finished.\n{}'.format(stat))
     with open(os.path.join(run_folder, 'stats.json'), 'w') as f:
         json.dump(stat, f, indent=4)
+    with open(os.path.join(run_folder, 'ok_deals.json'), 'w') as f:
+        json.dump(ok_deals, f, indent=4)
     return handlers
 
 
@@ -158,12 +164,12 @@ class InstantAdvisor:
 
 args = {
     'profit_price_avg_price_deviation': [0.001],
-    'profit_order_lifetime': [64, 128],
+    'profit_order_lifetime': [64],
     'period': [1],
     'currency_1': ['BTC'],
     'currency_2': ['USD'],
     'stock_fee': [0.002],
-    'profit_markup': [0.002, 0.003],
+    'profit_markup': [0.002],
     'reserve_price_avg_price_deviation': [0.002],
     'profit_price_prev_price_deviation': [0.0001],
     'currency_1_deal_size': [0.001],
@@ -172,10 +178,10 @@ args = {
     'same_profile_order_price_deviation': [0.01],
 
     'rolling_window': [6],
-    'profit_multiplier': [192, 256],
+    'profit_multiplier': [256],
     'mean_price_period': [16],
     'interpolation_degree': [20],
-    'profit_free_weight': [0.0016, 0.002, 0.003],
+    'profit_free_weight': [0.002],
     'reserve_multiplier': [0],
     # 'suspend_order_deviation': [None, 0.03],
 
@@ -188,7 +194,7 @@ configs = [dict(cfg) for cfg in product]
 handlers = []
 for cfg in configs:
     try:
-        handlers = run(cfg, 'test_sqlite', handlers)
+        handlers = run(cfg, 'test', handlers)
     except:
         logger.exception('Error')
 

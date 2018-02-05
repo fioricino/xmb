@@ -11,6 +11,7 @@ class MarketSimulator:
     def __init__(self, folder, initial_btc_balance, initial_usd_balance,
                  stock_fee, initial_timestamp=None, last_deals=100):
         self.balances = {'BTC': initial_btc_balance, 'USD': initial_usd_balance}
+        self.initial_balances = {'BTC': initial_btc_balance, 'USD': initial_usd_balance}
         self.balances_in_orders = {'BTC': 0, 'USD': 0}
         self.stock_fee = stock_fee
         self.index = 0
@@ -19,6 +20,7 @@ class MarketSimulator:
         self.deals = self.read_data(folder)
         self._set_initial_timestamp(initial_timestamp)
         self._last_deals = last_deals
+        self._trades = []
 
 
     def _set_initial_timestamp(self, initial_timestamp):
@@ -77,7 +79,7 @@ class MarketSimulator:
             # self.balances['USD'] += quantity * price * (1 - self.stock_fee)
         self.order_id += 1
         self.orders[str(self.order_id)] = {'order_id': str(self.order_id), 'type': type, 'quantity': str(quantity),
-                                           'price': str(price)}
+                                           'price': str(price), 'date': self.timestamp, 'trade_id': str(self.order_id)}
         return str(self.order_id)
 
     def update_timestamp(self, timestamp):
@@ -95,7 +97,7 @@ class MarketSimulator:
         return int(self.deals[-1]['date'])
 
     def get_user_trades(self, currency_1, currency_2, offset=0, limit=100):
-        return None
+        return self._trades
 
     def get_trades(self, currency_1, currency_2):
         return self.deals[self.index - self._last_deals:self.index - 1]
@@ -136,6 +138,7 @@ class MarketSimulator:
             self.balances_in_orders['BTC'] -= quantity
             logger.info('Amount: {} USD'.format(got))
         self.orders.pop(order['order_id'])
+        self._trades.append(order)
         logger.info(
             '{}: Balance: BTC: {:.6f}, USD: {:.2f}'.format(self.timestamp, self.balances['BTC'], self.balances['USD']))
         logger.info('{}: Balance (with orders): BTC: {:.6f}, USD: {:.2f}'.format(self.timestamp, self.balances['BTC']
@@ -146,3 +149,7 @@ class MarketSimulator:
     def get_balances_with_orders(self):
         return {'USD': self.balances['USD']
                        + self.balances_in_orders['USD'], 'BTC': self.balances['BTC'] + self.balances_in_orders['BTC']}
+
+    def get_profit(self):
+        return {'BTC': self.balances['BTC'] - self.initial_balances['BTC'] + self.balances_in_orders['BTC'],
+                'USD': self.balances['USD'] - self.initial_balances['USD'] + self.balances_in_orders['USD']}
