@@ -43,6 +43,11 @@ class TrendAnalyzer:
         else:
             self._reserve_multiplier = 0
 
+        if 'derivative_step' in kwargs:
+            self._derivative_step = kwargs['derivative_step']
+        else:
+            self._derivative_step = 1
+
 
     def _get_prices_for_period(self, deals):
         c = defaultdict(list)
@@ -65,7 +70,7 @@ class TrendAnalyzer:
         #       tt = self.get_interpolated_func([x for x, y in enumerate(rolling_mean_price_func[self._rolling_window:])],[y for y in rolling_mean_price_func[self._rolling_window:]])
         derivative_func = self._get_der_func(rolling_mean_price_func, step)
         rolling_mean_derivative_func = self._get_rolling_mean_func(derivative_func)
-        return rolling_mean_derivative_func
+        return rolling_mean_derivative_func, x_lin
 
     def _get_der_func(self, rolling_mean_price_func, step):
         return [sp.derivative(lambda x: rolling_mean_price_func[x], i) / step for i in
@@ -92,9 +97,14 @@ class TrendAnalyzer:
     def get_profile(self, trades):
         try:
             last_deals = self._get_prices_for_period(trades)
-            derivative_func = self._get_derivative_func(last_deals)
+            derivative_func, x_lin = self._get_derivative_func(last_deals)
             index = -1
-            last_derivative = derivative_func.iloc[index]
+            x_last = x_lin[index]
+            sum_der = 0
+            while index >= 0 and x_lin[index] > x_last - self._derivative_step:
+                sum_der += derivative_func.iloc[index]
+                index -= 1
+            last_derivative = sum_der
             profit_markup = abs(self._profit_multiplier * last_derivative) + self._profit_free_weight
             reserve_markup = abs(self._reserve_multiplier * last_derivative)
             period = self._mean_price_period
@@ -114,6 +124,7 @@ class TrendAnalyzer:
             if last_derivative < 0:
                 return 'DOWN', profit_markup, reserve_markup, mean_price
         except:
+            logger.exception('Cannot calculate derivative')
             return None, None, None, None
 
     def _calculate_mean_price(self, deals, mean_price_period):
