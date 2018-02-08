@@ -98,7 +98,7 @@ class TrendAnalyzer:
         try:
             last_deals = self._get_prices_for_period(trades)
             derivative_func, x_lin = self._get_derivative_func(last_deals)
-            index = -1
+            index = len(derivative_func) - 1
             x_last = x_lin[index]
             sum_der = 0
             while index >= 0 and x_lin[index] > x_last - self._derivative_step:
