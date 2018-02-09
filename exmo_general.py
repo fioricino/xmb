@@ -1,6 +1,8 @@
 import logging
 import math
 import time
+from collections import Counter
+from datetime import timedelta
 
 from exceptions import ApiError
 
@@ -107,6 +109,24 @@ class Worker:
         else:
             self._profit_currency_down = self._currency_1
 
+        if 'target_period' in kwargs:
+            self._target_period = kwargs['target_period']
+        else:
+            self._target_period = None
+
+        if 'target_profit' in kwargs:
+            self._target_profit = kwargs['target_profit']
+        else:
+            self._target_profit = None
+
+        if 'target_currency' in kwargs:
+            self._target_currency = kwargs['target_currency']
+        else:
+            self._target_currency = self._currency_2
+
+        self._current_deal_size = self._currency_1_deal_size
+        self._current_period = None
+
 
     # TODO move
     def run(self):
@@ -124,6 +144,8 @@ class Worker:
         self._interrupted = True
 
     def main_flow(self):
+        self._check_profit()
+
         user_trades = Lazy(self._api.get_user_trades, self._currency_1, self._currency_2)
 
         open_orders = [o for o in self._storage.get_open_orders() if o['status'] == 'OPEN']
@@ -181,6 +203,7 @@ class Worker:
                                                                                 order['profile']))
         self._storage.delete(order['order_id'], 'COMPLETED', self._get_time())
         self._storage.delete(order['base_order']['order_id'], 'COMPLETED', self._get_time())
+        self._add_profit_to_period(order)
 
     def _handle_completed_reserve_order(self, order):
         logger.info('Reserve order {} completed'.format(order['order_id']))
@@ -397,16 +420,16 @@ class Worker:
     def _calculate_desired_reserve_amount(self, profile):
         if profile == 'UP':
             if self._profit_currency_up == self._currency_1:
-                return self._currency_1_deal_size / ((1 - self._profit_markup) * (1 - self._stock_fee))
+                return self._current_deal_size / ((1 - self._profit_markup) * (1 - self._stock_fee))
             elif self._profit_currency_up == self._currency_2:
-                return self._currency_1_deal_size / (1 - self._stock_fee)
+                return self._current_deal_size / (1 - self._stock_fee)
             else:
                 raise ValueError('Profit currency {} not supported'.format(self._profit_currency_up))
         elif profile == 'DOWN':
             if self._profit_currency_down == self._currency_1:
-                return self._currency_1_deal_size
+                return self._current_deal_size
             elif self._profit_currency_down == self._currency_2:
-                return self._currency_1_deal_size / (1 - self._profit_markup)
+                return self._current_deal_size / (1 - self._profit_markup)
             else:
                 raise ValueError('Profit currency {} not supported'.format(self._profit_currency_down))
         raise ValueError('Unrecognized profile: ' + profile)
@@ -491,3 +514,77 @@ class Worker:
                 self._cancel_order(profit_order)
                 self._storage.update_order_status(profit_order['base_order']['order_id'], 'PROFIT_ORDER_CANCELED',
                                                   self._get_time())
+
+    def _check_profit(self):
+        def create_period(start_time, target_profit):
+            end = start_time + timedelta(hours=self._target_period).total_seconds()
+            logger.info('Create period. End: {}. Target profit: {}'.format(end, target_profit))
+            return Period(end, target_profit, self._target_currency)
+
+        if self._target_period is None or self._target_profit is None:
+            return
+        current_period = self._current_period
+        if current_period is None:
+            # create new period
+            self._current_period = create_period(self._get_time(), self._target_profit)
+        else:
+            if current_period.end < self._get_time():
+                # period is elapsed
+                if current_period.profit >= current_period.target_profit:
+                    # profit achieved
+                    if self._current_deal_size > self._currency_1_deal_size:
+                        logger.info('Profit {} achieved. Change deal size to {}'.format(current_period.target_profit,
+                                                                                        self._currency_1_deal_size))
+                        self._current_deal_size = self._currency_1_deal_size
+                    self._current_period = create_period(current_period.end, self._target_profit)
+                else:
+                    # profit not achieved
+                    profit_remainder = current_period.target_profit - current_period.profit
+                    target_profit = self._target_profit + profit_remainder
+                    factor = target_profit / self._target_profit
+                    new_deal_size = self._current_deal_size * factor
+                    logger.info('Profit {} not achieved. Change deal size to {}'.format(
+                        current_period.target_profit, new_deal_size))
+                    self._current_deal_size = new_deal_size
+                    self._current_period = create_period(current_period.end, target_profit)
+
+    def _add_profit_to_period(self, order):
+        order_profit = Counter()
+        profit = 0
+        if self._current_period is None:
+            return
+        if order['type'] == 'buy':
+            order_profit[self._currency_1] += float(order['quantity']) * (1 - self._stock_fee)
+            order_profit[self._currency_2] -= float(order['price']) * float(order['quantity'])
+            order_profit[self._currency_1] -= float(order['base_order']['quantity'])
+            order_profit[self._currency_2] += float(order['base_order']['price']) * float(
+                order['base_order']['quantity']) * (1 - self._stock_fee)
+        else:
+            order_profit[self._currency_1] -= float(order['quantity'])
+            order_profit[self._currency_2] += float(order['price']) * float(order['quantity']) * (1 - self._stock_fee)
+            order_profit[self._currency_1] += float(order['base_order']['quantity']) * (1 - self._stock_fee)
+            order_profit[self._currency_2] -= float(order['base_order']['price']) * float(
+                order['base_order']['quantity'])
+
+        for cur, pr in order_profit.items():
+            if cur == self._target_currency:
+                profit += pr
+            else:
+                if self._target_currency == self._currency_2:
+                    profit += pr * float(order['price'])
+                else:
+                    profit += pr / float(order['price'])
+        self._current_period.profit += profit
+        if self._current_period.profit >= self._current_period.target_profit and self._current_deal_size > self._currency_1_deal_size:
+            logger.info('Profit {} achieved. Change deal size to {}'.format(self._current_period.target_profit,
+                                                                            self._currency_1_deal_size))
+
+            self._current_deal_size = self._currency_1_deal_size
+
+
+class Period:
+    def __init__(self, end, target_profit, target_currency):
+        self.end = end
+        self.target_profit = target_profit
+        self.target_currency = target_currency
+        self.profit = 0
