@@ -527,8 +527,8 @@ class Worker:
                 self._storage.update_order_status(profit_order['base_order']['order_id'], 'PROFIT_ORDER_CANCELED',
                                                   self._get_time())
 
-    def _create_period(self, start_time, target_profit):
-        end = start_time + timedelta(hours=self._target_period).total_seconds()
+    def _create_period(self, target_profit):
+        end = self._get_time() + timedelta(hours=self._target_period).total_seconds()
         logger.info('Create period. End: {}. Target profit: {}'.format(end, target_profit))
         return Period(end, target_profit, self._target_currency)
 
@@ -539,7 +539,7 @@ class Worker:
         current_period = self._current_period
         if current_period is None:
             # create new period
-            self._current_period = self._create_period(self._get_time(), self._target_profit)
+            self._current_period = self._create_period(self._target_profit)
         else:
             if current_period.end < self._get_time():
                 # period is elapsed
@@ -549,7 +549,7 @@ class Worker:
                         logger.info('Profit {} achieved. Change deal size to {}'.format(current_period.target_profit,
                                                                                         self._currency_1_deal_size))
                         self._current_deal_size = self._currency_1_deal_size
-                    self._current_period = self._create_period(current_period.end, self._target_profit)
+                    self._current_period = self._create_period(self._target_profit)
                 else:
                     # profit not achieved
                     profit_remainder = current_period.target_profit - current_period.profit
@@ -559,7 +559,7 @@ class Worker:
                     logger.info('Profit {} not achieved. Change deal size to {}'.format(
                         current_period.target_profit, new_deal_size))
                     self._current_deal_size = new_deal_size
-                    self._current_period = self._create_period(current_period.end, target_profit)
+                    self._current_period = self._create_period(target_profit)
 
     def _add_profit_to_period(self, order):
         order_profit = Counter()
