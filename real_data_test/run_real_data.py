@@ -118,6 +118,7 @@ def run(cfg, base_folder, handlers):
             #     logger.info('Stats: {}'.format(get_stats(sim, storage, worker._stock_fee)))
             #     last_stat_timestamp = timestamp
         except:
+            logger.exception('Exception')
             break
 
     ok_deals, stat = get_stats(sim, storage, worker._stock_fee)
@@ -164,25 +165,30 @@ class InstantAdvisor:
 
 args = {
     'profit_price_avg_price_deviation': [0.001],
-    'profit_order_lifetime': [64, 128, 192],
+    'profit_order_lifetime': [64],
     'period': [1],
-    'currency_1': ['BTC'],
-    'currency_2': ['USD'],
     'stock_fee': [0.002],
-    'profit_markup': [0.002, 0.003, 0.004],
+    'profit_markup': [0.01],
     'reserve_price_avg_price_deviation': [0.002],
     'profit_price_prev_price_deviation': [0.0001],
     'currency_1_deal_size': [0.001],
-    'max_profit_orders_up': [10],
-    'max_profit_orders_down': [10],
+    'max_profit_orders_up': [100],
+    'max_profit_orders_down': [100],
     'same_profile_order_price_deviation': [0.01],
 
     'rolling_window': [6],
-    'profit_multiplier': [128, 192, 256],
+    'profit_multiplier': [128],
     'mean_price_period': [16],
     'interpolation_degree': [20],
-    'profit_free_weight': [0.002, 0.003, 0.004],
+    'profit_free_weight': [0.01],
     'reserve_multiplier': [0],
+    # 'derivative_step': [2, 3, 4, 5],
+    'profit_currency_down': ['USD'],
+    'profit_currency_up': ['USD'],
+    'target_currency': ['USD'],
+    'target_profit': [1],
+    'target_period': [4],
+    'currency_1_max_deal_size': [0.002],
     # 'suspend_order_deviation': [None, 0.03],
 
     'last_deals': [100]

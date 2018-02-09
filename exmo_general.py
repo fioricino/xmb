@@ -124,6 +124,18 @@ class Worker:
         else:
             self._target_currency = self._currency_2
 
+        if 'profit_compensation_periods' in kwargs:
+            self._profit_compensation_periods = kwargs['profit_compensation_periods']
+        else:
+            self._profit_compensation_periods = 1
+
+        if 'currency_1_max_deal_size' in kwargs:
+            self._currency_1_max_deal_size = kwargs['currency_1_max_deal_size']
+        else:
+            self._currency_1_max_deal_size = 0.002
+
+        self.profit_remainder = 0
+
         self._current_deal_size = self._currency_1_deal_size
         self._current_period = None
 
@@ -541,8 +553,8 @@ class Worker:
                     # profit not achieved
                     profit_remainder = current_period.target_profit - current_period.profit
                     target_profit = self._target_profit + profit_remainder
-                    factor = target_profit / self._target_profit
-                    new_deal_size = self._current_deal_size * factor
+                    factor = target_profit / current_period.target_profit
+                    new_deal_size = min(self._current_deal_size * factor, self._currency_1_max_deal_size)
                     logger.info('Profit {} not achieved. Change deal size to {}'.format(
                         current_period.target_profit, new_deal_size))
                     self._current_deal_size = new_deal_size
