@@ -20,7 +20,7 @@ class Calc:
         for order in archive_orders:
             orders[order['order_id']] = order
 
-        ds = self._api.get_user_trades('BTC', 'USD', limit=200)
+        ds = self._api.get_user_trades('BTC', 'USD', limit=1000)
         deals = defaultdict(list)
         for d in ds:
             deals[str(d['order_id'])].append(d)
@@ -52,7 +52,8 @@ class Calc:
                 related_dealset = deals[related_order_id]
                 for deal in dealset:
                     for related_deal in related_dealset:
-                        if datetime.fromtimestamp(int(deal['date'])) >= self._start_time and datetime.fromtimestamp(
+                        # if datetime.fromtimestamp(int(deal['date'])) >= self._start_time and \
+                        if datetime.fromtimestamp(
                                 int(related_deal['date'])) > self._start_time:
                             ok_related_deals.append(deal)
                             ok_related_deals.append(related_deal)
