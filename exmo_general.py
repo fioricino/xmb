@@ -84,6 +84,11 @@ class Worker:
         else:
             self._currency_1_deal_size = 0.001
 
+        if 'currency_1_min_deal_size' in kwargs:
+            self._currency_1_min_deal_size = kwargs['currency_1_min_deal_size']
+        else:
+            self._currency_1_min_deal_size = 0.001
+
         if 'max_profit_orders_up' in kwargs:
             self._max_profit_orders_up = kwargs['max_profit_orders_up']
         else:
@@ -460,17 +465,18 @@ class Worker:
         if profile == 'UP':
             if self._profit_currency_up == self._currency_1:
                 # Учитываем комиссию
-                return max(self._currency_1_deal_size,
+                return max(self._currency_1_min_deal_size,
                            amount_in_order * (1 - self._stock_fee) * (1 - self._profit_markup))
             elif self._profit_currency_up == self._currency_2:
-                return max(self._currency_1_deal_size, amount_in_order * (1 - self._stock_fee))
+                return max(self._currency_1_min_deal_size, amount_in_order * (1 - self._stock_fee))
             else:
                 raise ValueError('Profit currency {} not supported'.format(self._profit_currency_up))
         elif profile == 'DOWN':
             if self._profit_currency_down == self._currency_1:
-                return max(self._currency_1_deal_size, amount_in_order * (1 + profit_markup)) / (1 - self._stock_fee)
+                return max(self._currency_1_min_deal_size, amount_in_order * (1 + profit_markup)) / (
+                1 - self._stock_fee)
             elif self._profit_currency_down == self._currency_2:
-                return max(self._currency_1_deal_size, amount_in_order / (1 - self._stock_fee))
+                return max(self._currency_1_min_deal_size, amount_in_order / (1 - self._stock_fee))
             else:
                 raise ValueError('Profit currency {} not supported'.format(self._profit_currency_down))
 

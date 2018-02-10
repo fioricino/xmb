@@ -48,21 +48,27 @@ args = {
     'currency_1': 'BTC',
     'currency_2': 'USD',
     'stock_fee': 0.002,
-    'profit_markup': 0.002,
+    'profit_markup': 0.01,
     'reserve_price_avg_price_deviation': 0.002,
     'profit_price_prev_price_deviation': 0.0001,
     'currency_1_deal_size': 0.001,
-    'max_profit_orders_up': 16,
-    'max_profit_orders_down': 16,
-    'same_profile_order_price_deviation': 0.01
+    'max_profit_orders_up': 100,
+    'max_profit_orders_down': 100,
+    'same_profile_order_price_deviation': 0.01,
+    'profit_currency_down': 'USD',
+    'profit_currency_up': 'USD',
+    'target_currency': 'USD',
+    'target_profit': 0.5,
+    'target_period': 2,
+    'currency_1_max_deal_size': 0.002
 }
 
 stat_args = {
     'rolling_window': 6,
-    'profit_multiplier': 256,
+    'profit_multiplier': 64,
     'mean_price_period': 16,
     'interpolation_degree': 20,
-    'profit_free_weight': 0.002,
+    'profit_free_weight': 0.01,
     'reserve_multiplier': 0,
 }
 

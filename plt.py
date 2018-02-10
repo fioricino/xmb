@@ -10,8 +10,8 @@ import json
 from sqlite_api import SQLiteStorage
 from trend_analyze import TrendAnalyzer
 
-deals_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\datasets'
-run_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\test'
+deals_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\datasets'
+run_folder = None  # r'C:\Users\ozavorot\Documents\GitHub\xmb\test'
 db_file = None  # r'C:\Users\ozavorot\Documents\GitHub\xmb\datasets\orders.db'
 
 
@@ -150,8 +150,12 @@ def analyze_run(deals_folder, run_folder, colors, offset=None, limit=None):
         deals_df = deals_df[offset:limit]
         # print(deals_df)
     plt.plot(deals_df['date'], deals_df['price'])
+    orders = None
     if run_folder:
         orders = get_orders_from_json(run_folder)
+    if db_file:
+        orders = get_orders_from_db(db_file)
+    if orders:
         max_time = max(deals_df['date'])
         for order in orders:
             if int(order['created']) < max_time:
@@ -189,17 +193,17 @@ colors = {
         {
             'RESERVE':
                 {
-                    'COMPLETED': None,  # 'MAGENTA',
-                    'CANCELED': None,  # 'PINK',
+                    'COMPLETED': 'MAGENTA',
+                    'CANCELED': 'PINK',
                     'OPEN': None,
-                    'WAIT_FOR_PROFIT': None,  # 'MAGENTA',
-                    'PROFIT_ORDER_CANCELED': None,  # 'MAGENTA'
+                    'WAIT_FOR_PROFIT': 'MAGENTA',
+                    'PROFIT_ORDER_CANCELED': 'MAGENTA'
                 },
             'PROFIT':
                 {
-                    'COMPLETED': None,  # 'PURPLE',
-                    'CANCELED': None,  # 'BLACK',
-                    'OPEN': None,  # 'PURPLE',
+                    'COMPLETED': 'PURPLE',
+                    'CANCELED': 'BLACK',
+                    'OPEN': 'PURPLE',
                     'WAIT_FOR_PROFIT': None,
                     'PROFIT_ORDER_CANCELED': None,
                 }
