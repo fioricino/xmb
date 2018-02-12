@@ -19,8 +19,11 @@ def get_deals(deals_folder):
     deals = {}
     for filename in os.listdir(deals_folder):
         with open(os.path.join(deals_folder, filename)) as f:
-            d = json.load(f)
-            deals.update(d)
+            try:
+                d = json.load(f)
+                deals.update(d)
+            except:
+                pass
     dd = defaultdict(list)
     for d in deals.values():
         dd[int(d['date'])].append(float(d['price']))

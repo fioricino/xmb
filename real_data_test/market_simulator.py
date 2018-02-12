@@ -35,8 +35,11 @@ class MarketSimulator:
         deals = {}
         for filename in os.listdir(folder):
             with open(os.path.join(folder, filename)) as f:
-                d = json.load(f)
-                deals.update(d)
+                try:
+                    d = json.load(f)
+                    deals.update(d)
+                except:
+                    pass
         return sorted(deals.values(), key=lambda v: (int(v['date']), int(v['trade_id'])))
 
     def get_open_orders(self, currency_1, currency_2):

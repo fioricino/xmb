@@ -28,10 +28,12 @@ class Worker:
     def __init__(self, api,
                  storage,
                  advisor,
+                 deal_sizer,
                  **kwargs):
         self._api = api
         self._storage = storage
         self._advisor = advisor
+        self._deal_sizer = deal_sizer
         self._interrupted = False
 
         if 'profit_price_avg_price_deviation' in kwargs:
@@ -78,11 +80,6 @@ class Worker:
             self._profit_price_prev_price_deviation = kwargs['profit_price_prev_price_deviation']
         else:
             self._profit_price_prev_price_deviation = 0.0001
-
-        if 'currency_1_deal_size' in kwargs:
-            self._currency_1_deal_size = kwargs['currency_1_deal_size']
-        else:
-            self._currency_1_deal_size = 0.001
 
         if 'currency_1_min_deal_size' in kwargs:
             self._currency_1_min_deal_size = kwargs['currency_1_min_deal_size']
@@ -141,7 +138,7 @@ class Worker:
 
         self.profit_remainder = 0
 
-        self._current_deal_size = self._currency_1_deal_size
+        # self._current_deal_size = self._deal_sizer.get_deal_size()
         self._current_period = None
 
 
@@ -437,16 +434,17 @@ class Worker:
     def _calculate_desired_reserve_amount(self, profile):
         if profile == 'UP':
             if self._profit_currency_up == self._currency_1:
-                return self._current_deal_size / ((1 - self._profit_markup) * (1 - self._stock_fee))
+                return max(self._currency_1_min_deal_size,
+                           self._deal_sizer.get_deal_size() / ((1 - self._profit_markup) * (1 - self._stock_fee)))
             elif self._profit_currency_up == self._currency_2:
-                return self._current_deal_size / (1 - self._stock_fee)
+                return max(self._currency_1_min_deal_size, self._deal_sizer.get_deal_size() / (1 - self._stock_fee))
             else:
                 raise ValueError('Profit currency {} not supported'.format(self._profit_currency_up))
         elif profile == 'DOWN':
             if self._profit_currency_down == self._currency_1:
-                return self._current_deal_size
+                return max(self._currency_1_min_deal_size, self._deal_sizer.get_deal_size())
             elif self._profit_currency_down == self._currency_2:
-                return self._current_deal_size / (1 - self._profit_markup)
+                return max(self._currency_1_min_deal_size, self._deal_sizer.get_deal_size() / (1 - self._profit_markup))
             else:
                 raise ValueError('Profit currency {} not supported'.format(self._profit_currency_down))
         raise ValueError('Unrecognized profile: ' + profile)
@@ -551,17 +549,18 @@ class Worker:
                 # period is elapsed
                 if current_period.profit >= current_period.target_profit:
                     # profit achieved
-                    if self._current_deal_size > self._currency_1_deal_size:
+                    if self._current_deal_size > self._deal_sizer.get_deal_size():
                         logger.info('Profit {} achieved. Change deal size to {}'.format(current_period.target_profit,
-                                                                                        self._currency_1_deal_size))
-                        self._current_deal_size = self._currency_1_deal_size
+                                                                                        self._deal_sizer.get_deal_size()))
+                        self._current_deal_size = self._deal_sizer.get_deal_size()
                     self._current_period = self._create_period(self._target_profit)
                 else:
                     # profit not achieved
                     profit_remainder = current_period.target_profit - current_period.profit
                     target_profit = self._target_profit + profit_remainder
-                    factor = target_profit / current_period.target_profit
-                    new_deal_size = min(self._current_deal_size * factor, self._currency_1_max_deal_size)
+                    factor = target_profit / self._target_profit
+                    new_deal_size = max(self._currency_1_min_deal_size,
+                                        min(self._deal_sizer.get_deal_size() * factor, self._currency_1_max_deal_size))
                     logger.info('Profit {} not achieved. Change deal size to {}'.format(
                         current_period.target_profit, new_deal_size))
                     self._current_deal_size = new_deal_size
@@ -594,11 +593,11 @@ class Worker:
                 else:
                     profit += pr / float(order['price'])
         self._current_period.profit += profit
-        if self._current_period.profit >= self._current_period.target_profit and self._current_deal_size > self._currency_1_deal_size:
+        if self._current_period.profit >= self._current_period.target_profit and self._current_deal_size > self._deal_sizer.get_deal_size():
             logger.info('Profit {} achieved. Change deal size to {}'.format(self._current_period.target_profit,
-                                                                            self._currency_1_deal_size))
+                                                                            self._deal_sizer.get_deal_size()))
 
-            self._current_deal_size = self._currency_1_deal_size
+            self._current_deal_size = self._deal_sizer.get_deal_size()
 
 
 class Period:

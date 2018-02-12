@@ -56,11 +56,11 @@ args = {
     'max_profit_orders_down': 100,
     'same_profile_order_price_deviation': 0.01,
     'profit_currency_down': 'USD',
-    'profit_currency_up': 'USD',
-    'target_currency': 'USD',
-    'target_profit': 0.5,
-    'target_period': 2,
-    'currency_1_max_deal_size': 0.002
+    'profit_currency_up': 'USD'
+    # 'target_currency': 'USD',
+    # 'target_profit': 0.5,
+    # 'target_period': 2,
+    # 'currency_1_max_deal_size': 0.002
 }
 
 stat_args = {
