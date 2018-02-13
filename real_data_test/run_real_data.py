@@ -90,8 +90,8 @@ def run(cfg, base_folder, handlers):
     handlers = create_handlers(logs_dir)
     archive_dir = os.path.join(run_folder, 'archive')
     os.makedirs(archive_dir)
-    sim = MarketSimulator('datasets', initial_btc_balance=0.024,
-                          initial_usd_balance=200,
+    sim = MarketSimulator('datasets', initial_btc_balance=0.1,
+                          initial_usd_balance=1000,
                           stock_fee=cfg['stock_fee'], last_deals=cfg['last_deals'],
                           initial_timestamp=cfg['initial_timestamp'])
     # storage = SQLiteStorage(os.path.join(run_folder, 'test.db'))
@@ -105,6 +105,7 @@ def run(cfg, base_folder, handlers):
 
     deal_provider = DealsProvider(sim.deals)
     ds = KDEDealSizer(deal_provider, advisor, **cfg)
+    ds._get_time = lambda: sim.timestamp
 
     timestamp = sim.get_timestamp()
     last_timestamp = sim.get_max_timestamp()
@@ -195,12 +196,9 @@ class DealsProvider:
 
 
 args = {
-    'profit_price_avg_price_deviation': [0.001],
     'profit_order_lifetime': [64],
     'stock_fee': [0.002],
     'profit_markup': [0.01],
-    'reserve_price_avg_price_deviation': [0.002],
-    'profit_price_prev_price_deviation': [0.0001],
     'currency_1_deal_size': [0.001],
     'max_profit_orders_up': [100],
     'max_profit_orders_down': [100],
@@ -212,16 +210,16 @@ args = {
     # 'derivative_step': [2, 3, 4, 5],
     'profit_currency_down': ['USD'],
     'profit_currency_up': ['USD'],
-    'initial_timestamp': [1518038789],
+    'initial_timestamp': [1517515848],
     # 'target_currency': ['USD'],
     # 'target_profit': [0.5],
     # 'target_period': [2],
     # 'currency_1_max_deal_size': [0.002],
     # 'suspend_order_deviation': [None, 0.03],
 
-    'kde_multiplier': [1],
+    'kde_multiplier': [0.001, 1],
     'kde_bandwith': [150],
-    'kde_days': [7],
+    'kde_days': [3],
     'last_deals': [100]
 }
 
@@ -231,7 +229,7 @@ configs = [dict(cfg) for cfg in product]
 handlers = []
 for cfg in configs:
     try:
-        handlers = run(cfg, 'test1', handlers)
+        handlers = run(cfg, 'test1000', handlers)
     except:
         logger.exception('Error')
 

@@ -45,7 +45,7 @@ class KDEDealSizer:
             avg_price = self._avg_price_provider.get_avg_price()
             score = np.exp(kde.score(np.array(avg_price).reshape(1, 1)))
             pdf = score * (max(prices) - min(prices)) * self._kde_multiplier
-            return pdf * self._currency_1_deal_size
+            return max(self._currency_1_deal_size, pdf * self._currency_1_deal_size)
         except:
             logger.exception('Cannot calculate deal size')
             return self._currency_1_deal_size

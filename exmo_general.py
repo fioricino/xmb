@@ -167,11 +167,12 @@ class Worker:
         if open_orders:
             self._handle_open_orders(open_orders, user_trades)
 
-        wait_orders = [o for o in self._storage.get_open_orders() if
+        all_orders = self._storage.get_open_orders()
+        wait_orders = [o for o in all_orders if
                        o['status'] == 'WAIT_FOR_PROFIT' or o['status'] == 'PROFIT_ORDER_CANCELED']
 
         if wait_orders:
-            self._handle_orders_wait_for_profit(wait_orders, user_trades)
+            self._handle_orders_wait_for_profit(wait_orders, user_trades, all_orders)
         self._make_reserve()
 
     def _handle_open_orders(self, open_orders, user_trades):
@@ -253,16 +254,16 @@ class Worker:
         return order['order_id'] in [str(t['order_id']) for t in
                                      user_trades.get_value()]
 
-    def _handle_orders_wait_for_profit(self, wait_orders, user_trades):
+    def _handle_orders_wait_for_profit(self, wait_orders, user_trades, all_orders):
         try:
             for order in wait_orders:
-                self._handle_order_wait_for_profit(order, user_trades)
+                self._handle_order_wait_for_profit(order, user_trades, all_orders)
         except Exception as e:
             logger.exception('Cannot handle orders waiting for profit')
 
-    def _handle_order_wait_for_profit(self, order, user_trades):
+    def _handle_order_wait_for_profit(self, order, user_trades, all_orders):
         try:
-            profit_orders = [o for o in self._storage.get_open_orders() if o['order_type'] == 'PROFIT'
+            profit_orders = [o for o in all_orders if o['order_type'] == 'PROFIT'
                              and o['base_order']['order_id'] == order['order_id']]
             if not profit_orders:
                 self._create_profit_order(order)

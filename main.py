@@ -5,6 +5,7 @@ import sys
 from logging.handlers import RotatingFileHandler
 from threading import Thread
 
+from ConstDealSizer import ConstDealSizer
 from advisor import BackgroundStatAdvisor
 from exmo_api import ExmoApi
 from exmo_api_proxy import ExmoApiProxy
@@ -90,9 +91,11 @@ if __name__ == '__main__':
     trend_analyzer = TrendAnalyzer(**stat_args)
 
     advisor = BackgroundStatAdvisor(trend_analyzer, exmo_public_api, period=1)
+    ds = ConstDealSizer(**args)
     worker = Worker(exmo_api,
                     storage,
                     advisor,
+                    ds,
                     **args)
     t = Thread(target=worker.run)
     t.run()
