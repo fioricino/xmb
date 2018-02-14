@@ -9,7 +9,7 @@ from sqlite_api import SQLiteStorage
 
 FEE = 0.002
 
-START_TIME = datetime(2018, 2, 13, 0, 0, 0)
+START_TIME = datetime(2018, 2, 14, 0, 0, 0)
 
 ORDER_FILE = r'real_run\orders.db'
 

@@ -156,3 +156,9 @@ class MarketSimulator:
     def get_profit(self):
         return {'BTC': self.balances['BTC'] - self.initial_balances['BTC'] + self.balances_in_orders['BTC'],
                 'USD': self.balances['USD'] - self.initial_balances['USD'] + self.balances_in_orders['USD']}
+
+    def check_balances(self, price, quantity, order_type):
+        if order_type == 'buy':
+            return self.balances['USD'] > quantity * price
+        if order_type == 'sell':
+            return self.balances['BTC'] > quantity

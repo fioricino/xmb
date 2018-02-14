@@ -314,12 +314,13 @@ class Worker:
     def _create_reserve_order(self, profile, avg_price, reserve_markup):
         my_need_price = self._calculate_desired_reserve_price(avg_price, profile, reserve_markup)
         my_amount = self._calculate_desired_reserve_amount(profile)
+        order_type = self._reserve_order_type(profile)
         new_order_id = str(self._api.create_order(
             currency_1=self._currency_1,
             currency_2=self._currency_2,
             quantity=my_amount,
             price=my_need_price,
-            type=self._reserve_order_type(profile)
+            type=order_type
         ))
         open_orders = self._get_open_orders_for_create()
         new_orders = [order for order in open_orders if str(order['order_id']) == new_order_id]
@@ -351,13 +352,6 @@ class Worker:
             return self._api.get_user_trades(self._currency_1, self._currency_2)
 
     def _create_profit_order(self, base_order):
-        """
-                        Высчитываем курс для продажи.
-                        Нам надо продать всю валюту, которую купили, на сумму, за которую купили + немного навара и минус комиссия биржи
-                        При этом важный момент, что валюты у нас меньше, чем купили - бирже ушла комиссия
-                        0.00134345 1.5045
-                    """
-        # balances = self._api.get_balances()
         profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
         base_status = base_order['status']
         base_profile = base_order['profile']
@@ -375,15 +369,15 @@ class Worker:
         else:
             order_profit_markup = self._profit_markup
         quantity = self._calculate_profit_quantity(base_order, base_profile, order_profit_markup)
-
         price = self._calculate_profit_price(quantity, base_order, base_profile, order_profit_markup)
+        order_type = self._profit_order_type(base_profile)
         logger.info('Create new profit order for base order: {}'.format(base_order['order_id']))
         new_order_id = str(self._api.create_order(
             currency_1=self._currency_1,
             currency_2=self._currency_2,
             quantity=quantity,
             price=price,
-            type=self._profit_order_type(base_profile),
+            type=order_type,
         ))
         open_orders = self._get_open_orders_for_create()
         new_orders = [order for order in open_orders if str(order['order_id']) == new_order_id]
