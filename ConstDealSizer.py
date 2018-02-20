@@ -5,5 +5,5 @@ class ConstDealSizer:
         else:
             self._currency_1_deal_size = 0.001
 
-    def get_deal_size(self):
+    def get_deal_size(self, price, profile):
         return self._currency_1_deal_size

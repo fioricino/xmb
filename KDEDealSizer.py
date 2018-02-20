@@ -15,7 +15,7 @@ class KDEDealSizer:
         if 'kde_multiplier' in kwargs:
             self._kde_multiplier = float(kwargs['kde_multiplier'])
         else:
-            self._kde_multiplier = 10
+            self._kde_multiplier = 5
 
         if 'kde_bandwith' in kwargs:
             self._kde_bandwith = float(kwargs['kde_bandwith'])

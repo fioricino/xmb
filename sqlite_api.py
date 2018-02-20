@@ -76,7 +76,8 @@ class SQLiteStorage:
 
     def get_archive_completed_orders(self):
         ords = ArchiveOrder.select().where(
-            (ArchiveOrder.status == 'COMPLETED') | (ArchiveOrder.status == 'WAIT_FOR_PROFIT'))
+            (ArchiveOrder.status == 'COMPLETED') | (ArchiveOrder.status == 'WAIT_FOR_PROFIT')
+            | (ArchiveOrder.status == 'PROFIT_ORDER_CANCELED'))
         return [self._map_order(o, True) for o in ords]
 
     def _map_order(self, ord, is_archive=False, full_map=False):

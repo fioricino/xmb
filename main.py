@@ -56,7 +56,7 @@ args = {
     'max_profit_orders_up': 100,
     'max_profit_orders_down': 100,
     'same_profile_order_price_deviation': 0.01,
-    'profit_currency_down': 'USD',
+    'profit_currency_down': 'BTC',
     'profit_currency_up': 'USD'
     # 'target_currency': 'USD',
     # 'target_profit': 0.5,

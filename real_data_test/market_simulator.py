@@ -21,6 +21,7 @@ class MarketSimulator:
         self._set_initial_timestamp(initial_timestamp)
         self._last_deals = last_deals
         self._trades = []
+        self.max_balances = {'USD': 0, 'BTC': 0}
 
 
     def _set_initial_timestamp(self, initial_timestamp):
@@ -74,11 +75,15 @@ class MarketSimulator:
                 raise ApiError('Cannot create order: too few USD')
             self.balances['USD'] -= amount
             self.balances_in_orders['USD'] += amount
+            if self.balances_in_orders['USD'] > self.max_balances['USD']:
+                self.max_balances['USD'] = self.balances_in_orders['USD']
         elif type == 'sell':
             if self.balances['BTC'] < quantity:
                 raise ApiError('Cannot create order: too few BTC')
             self.balances['BTC'] -= quantity
             self.balances_in_orders['BTC'] += quantity
+            if self.balances_in_orders['BTC'] > self.max_balances['BTC']:
+                self.max_balances['BTC'] = self.balances_in_orders['BTC']
             # self.balances['USD'] += quantity * price * (1 - self.stock_fee)
         self.order_id += 1
         self.orders[str(self.order_id)] = {'order_id': str(self.order_id), 'type': type, 'quantity': str(quantity),

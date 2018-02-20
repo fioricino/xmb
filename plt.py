@@ -10,7 +10,7 @@ import json
 from sqlite_api import SQLiteStorage
 from trend_analyze import TrendAnalyzer
 
-deals_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\trades-2018-02-02'
+deals_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\datasets'
 run_folder = None  # r'C:\Users\ozavorot\Documents\GitHub\xmb\test'
 db_file = None  # r'C:\Users\ozavorot\Documents\GitHub\xmb\datasets\orders.db'
 

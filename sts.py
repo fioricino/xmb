@@ -4,7 +4,7 @@ import os
 import pandas as pd
 from tabulate import tabulate
 
-base_folder = r'real_data_test\test300'
+base_folder = r'real_data_test\test_month'
 
 stat_file = 'stats.json'
 
@@ -16,6 +16,11 @@ def handle_folder(folder, data):
             stats = json.load(f)
             data['BTC'] = float(stats['BTC'])
             data['USD'] = float(stats['USD'])
+            data['BTC_max'] = float(stats['BTC_max'])
+            data['USD_max'] = float(stats['USD_max'])
+            data['BTC_rate'] = data['BTC'] / data['BTC_max']
+            data['USD_rate'] = data['USD'] / data['USD_max']
+            data['total_rate'] = data['BTC_rate'] + data['USD_rate']
             # data['profit'] = np.mean((data['BTC'], data['USD']))
         arch_fold = os.path.join(folder, 'archive')
         for fl in os.listdir(arch_fold):
@@ -53,7 +58,7 @@ def get_run_stats(base_folder):
     result = walk_dir(base_folder)
 
     df = pd.DataFrame(result)
-    df = df.sort_values('USD', ascending=False)
+    df = df.sort_values('total_rate', ascending=False)
     return df
 
 

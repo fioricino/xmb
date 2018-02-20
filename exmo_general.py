@@ -313,7 +313,7 @@ class Worker:
 
     def _create_reserve_order(self, profile, avg_price, reserve_markup):
         my_need_price = self._calculate_desired_reserve_price(avg_price, profile, reserve_markup)
-        my_amount = self._calculate_desired_reserve_amount(profile)
+        my_amount = self._calculate_desired_reserve_amount(profile, avg_price)
         order_type = self._reserve_order_type(profile)
         new_order_id = str(self._api.create_order(
             currency_1=self._currency_1,
@@ -368,8 +368,9 @@ class Worker:
                                       self._profit_markup)
         else:
             order_profit_markup = self._profit_markup
-        quantity = self._calculate_profit_quantity(base_order, base_profile, order_profit_markup)
-        price = self._calculate_profit_price(quantity, base_order, base_profile, order_profit_markup)
+        quantity = self._calculate_profit_quantity(float(base_order['quantity']), base_profile, order_profit_markup)
+        price = self._calculate_profit_price(quantity, float(base_order['quantity']), float(base_order['price']),
+                                             base_profile, order_profit_markup)
         order_type = self._profit_order_type(base_profile)
         logger.info('Create new profit order for base order: {}'.format(base_order['order_id']))
         new_order_id = str(self._api.create_order(
@@ -426,20 +427,23 @@ class Worker:
             return 'sell'
         raise ValueError('Unrecognized profile: ' + profile)
 
-    def _calculate_desired_reserve_amount(self, profile):
+    def _calculate_desired_reserve_amount(self, profile, price):
         if profile == 'UP':
             if self._profit_currency_up == self._currency_1:
                 return max(self._currency_1_min_deal_size,
-                           self._deal_sizer.get_deal_size() / ((1 - self._profit_markup) * (1 - self._stock_fee)))
+                           self._deal_sizer.get_deal_size(price, profile) / (
+                           (1 - self._profit_markup) * (1 - self._stock_fee)))
             elif self._profit_currency_up == self._currency_2:
-                return max(self._currency_1_min_deal_size, self._deal_sizer.get_deal_size() / (1 - self._stock_fee))
+                return max(self._currency_1_min_deal_size,
+                           self._deal_sizer.get_deal_size(price, profile) / (1 - self._stock_fee))
             else:
                 raise ValueError('Profit currency {} not supported'.format(self._profit_currency_up))
         elif profile == 'DOWN':
             if self._profit_currency_down == self._currency_1:
-                return max(self._currency_1_min_deal_size, self._deal_sizer.get_deal_size())
+                return max(self._currency_1_min_deal_size, self._deal_sizer.get_deal_size(price, profile))
             elif self._profit_currency_down == self._currency_2:
-                return max(self._currency_1_min_deal_size, self._deal_sizer.get_deal_size() / (1 - self._profit_markup))
+                return max(self._currency_1_min_deal_size,
+                           self._deal_sizer.get_deal_size(price, profile) / (1 - self._profit_markup))
             else:
                 raise ValueError('Profit currency {} not supported'.format(self._profit_currency_down))
         raise ValueError('Unrecognized profile: ' + profile)
@@ -453,45 +457,42 @@ class Worker:
             return avg_price * (1 + reserve_markup)
         raise ValueError('Unrecognized profile: ' + profile)
 
-    def _calculate_profit_quantity(self, base_order, profile, profit_markup):
-        amount_in_order = float(base_order['quantity'])
+    def _calculate_profit_quantity(self, base_quantity, profile, profit_markup):
         if profile == 'UP':
             if self._profit_currency_up == self._currency_1:
                 # Учитываем комиссию
                 return max(self._currency_1_min_deal_size,
-                           amount_in_order * (1 - self._stock_fee) * (1 - self._profit_markup))
+                           base_quantity * (1 - self._stock_fee) * (1 - self._profit_markup))
             elif self._profit_currency_up == self._currency_2:
-                return max(self._currency_1_min_deal_size, amount_in_order * (1 - self._stock_fee))
+                return max(self._currency_1_min_deal_size, base_quantity * (1 - self._stock_fee))
             else:
                 raise ValueError('Profit currency {} not supported'.format(self._profit_currency_up))
         elif profile == 'DOWN':
             if self._profit_currency_down == self._currency_1:
-                return max(self._currency_1_min_deal_size, amount_in_order * (1 + profit_markup)) / (
+                return max(self._currency_1_min_deal_size, base_quantity * (1 + profit_markup)) / (
                 1 - self._stock_fee)
             elif self._profit_currency_down == self._currency_2:
-                return max(self._currency_1_min_deal_size, amount_in_order / (1 - self._stock_fee))
+                return max(self._currency_1_min_deal_size, base_quantity / (1 - self._stock_fee))
             else:
                 raise ValueError('Profit currency {} not supported'.format(self._profit_currency_down))
 
             # Комиссия была в долларах
         raise ValueError('Unrecognized profile: ' + profile)
 
-    def _calculate_profit_price(self, quantity, base_order, profile, profit_markup):
-        price_in_order = float(base_order['price'])
-        amount_in_order = float(base_order['quantity'])
+    def _calculate_profit_price(self, quantity, base_quantity, base_price, profile, profit_markup):
         if profile == 'UP':
             if self._profit_currency_up == self._currency_1:
                 # Комиссия была снята в 1 валюте, считаем от цены ордера
-                return amount_in_order * price_in_order / quantity * (1 - self._stock_fee)
+                return base_quantity * base_price / quantity * (1 - self._stock_fee)
             elif self._profit_currency_up == self._currency_2:
-                return amount_in_order * price_in_order * (1 + profit_markup) / (quantity * (1 - self._stock_fee))
+                return base_quantity * base_price * (1 + profit_markup) / (quantity * (1 - self._stock_fee))
             else:
                 raise ValueError('Profit currency {} not supported'.format(self._profit_currency_up))
         if profile == 'DOWN':
             if self._profit_currency_down == self._currency_1:
-                return (amount_in_order * price_in_order * (1 - self._stock_fee)) / quantity
+                return (base_quantity * base_price * (1 - self._stock_fee)) / quantity
             elif self._profit_currency_down == self._currency_2:
-                return (amount_in_order * price_in_order * (1 - self._stock_fee) * (1 - profit_markup)) / quantity
+                return (base_quantity * base_price * (1 - self._stock_fee) * (1 - profit_markup)) / quantity
             else:
                 raise ValueError('Profit currency {} not supported'.format(self._profit_currency_down))
         raise ValueError('Unrecognized profile: ' + profile)
@@ -508,13 +509,14 @@ class Worker:
         if int(self._get_time() - profit_order['created']) > self._profit_order_lifetime \
                 and float(profit_order['profit_markup']) != self._profit_markup:
             if profit_order['profile'] == 'DOWN':
-                desired_profit_amount = self._calculate_profit_quantity(profit_order['base_order'],
+                desired_profit_amount = self._calculate_profit_quantity(float(profit_order['base_order']['quantity']),
                                                                         profit_order['profile'],
                                                                         self._profit_markup)
             else:
                 desired_profit_amount = float(profit_order['quantity'])
             desired_profit_price = self._calculate_profit_price(desired_profit_amount,
-                                                                profit_order['base_order'],
+                                                                float(profit_order['base_order']['quantity']),
+                                                                float(profit_order['base_order']['price']),
                                                                 profit_order['profile'],
                                                                 self._profit_markup)
             if abs(desired_profit_price - float(profit_order[

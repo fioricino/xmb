@@ -90,8 +90,8 @@ def run(cfg, base_folder, handlers):
     handlers = create_handlers(logs_dir)
     archive_dir = os.path.join(run_folder, 'archive')
     os.makedirs(archive_dir)
-    sim = MarketSimulator('datasets', initial_btc_balance=0.03,
-                          initial_usd_balance=300,
+    sim = MarketSimulator('datasets', initial_btc_balance=1,
+                          initial_usd_balance=10000,
                           stock_fee=cfg['stock_fee'], last_deals=cfg['last_deals'],
                           initial_timestamp=cfg['initial_timestamp'])
     # storage = SQLiteStorage(os.path.join(run_folder, 'test.db'))
@@ -129,9 +129,10 @@ def run(cfg, base_folder, handlers):
             #     last_stat_timestamp = timestamp
         except:
             logger.exception('Exception')
-            break
 
     ok_deals, stat = get_stats(sim, storage, worker._stock_fee)
+    stat['BTC_max'] = sim.max_balances['BTC']
+    stat['USD_max'] = sim.max_balances['USD']
     logger.info('Finished.\n{}'.format(stat))
     with open(os.path.join(run_folder, 'stats.json'), 'w') as f:
         json.dump(stat, f, indent=4)
@@ -229,26 +230,6 @@ cfgs = [
         'profit_order_lifetime': 64,
         'stock_fee': 0.002,
         'profit_markup': 0.01,
-        'currency_1_deal_size': 0.0015,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.01,
-
-        'profit_multiplier': 128,
-        'mean_price_period': 16,
-        'profit_free_weight': 0.01,
-        'profit_currency_down': 'USD',
-        'profit_currency_up': 'USD',
-        'initial_timestamp': 1517515848,
-        'kde_multiplier': 0.001,
-        'kde_bandwith': 150,
-        'kde_days': 1,
-        'last_deals': 100
-    },
-    {
-        'profit_order_lifetime': 64,
-        'stock_fee': 0.002,
-        'profit_markup': 0.01,
         'currency_1_deal_size': 0.001,
         'max_profit_orders_up': 100,
         'max_profit_orders_down': 100,
@@ -257,54 +238,16 @@ cfgs = [
         'profit_multiplier': 128,
         'mean_price_period': 16,
         'profit_free_weight': 0.01,
-        'profit_currency_down': 'USD',
+        'profit_currency_down': 'BTC',
         'profit_currency_up': 'USD',
         'initial_timestamp': 1517515848,
-        'kde_multiplier': 1,
-        'kde_bandwith': 150,
-        'kde_days': 3,
-        'last_deals': 100
-    },
-    {
-        'profit_order_lifetime': 64,
-        'stock_fee': 0.002,
-        'profit_markup': 0.01,
-        'currency_1_deal_size': 0.001,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.01,
-
-        'profit_multiplier': 128,
-        'mean_price_period': 16,
-        'profit_free_weight': 0.01,
-        'profit_currency_down': 'USD',
-        'profit_currency_up': 'USD',
-        'initial_timestamp': 1517515848,
-        'kde_multiplier': 1,
+        'kde_multiplier': 0,
         'kde_bandwith': 150,
         'kde_days': 7,
         'last_deals': 100
     },
-    {
-        'profit_order_lifetime': 64,
-        'stock_fee': 0.002,
-        'profit_markup': 0.01,
-        'currency_1_deal_size': 0.001,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.01,
 
-        'profit_multiplier': 128,
-        'mean_price_period': 16,
-        'profit_free_weight': 0.01,
-        'profit_currency_down': 'USD',
-        'profit_currency_up': 'USD',
-        'initial_timestamp': 1517515848,
-        'kde_multiplier': 1,
-        'kde_bandwith': 150,
-        'kde_days': 100,
-        'last_deals': 100
-    }
+
 ]
 
 d = [list(zip(itertools.repeat(arg, len(values)), values)) for arg, values in args.items()]
@@ -313,7 +256,7 @@ configs = [dict(cfg) for cfg in product]
 handlers = []
 for cfg in cfgs:
     try:
-        handlers = run(cfg, 'test300', handlers)
+        handlers = run(cfg, 'test_month', handlers)
     except:
         logger.exception('Error')
 
