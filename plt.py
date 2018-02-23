@@ -11,7 +11,9 @@ from sqlite_api import SQLiteStorage
 from trend_analyze import TrendAnalyzer
 
 deals_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\datasets'
-run_folder = None  # r'C:\Users\ozavorot\Documents\GitHub\xmb\test'
+run_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\test_month2\c1ds_0' \
+             r'.001_it_1517574194_kb_150_kd_7_km_0_ld_100_lpd_0.03_mpod_100_mpou_100_mpp_16_pcd_BTC_pcu_USD_pm_0' \
+             r'.01_spopd_0.05_sf_0.002_'
 db_file = None  # r'C:\Users\ozavorot\Documents\GitHub\xmb\datasets\orders.db'
 
 
@@ -146,28 +148,76 @@ def plot_order(order, colors, max_time, deals_df):
 #         der = der_func.iloc[-2]
 #         plt.text(int(order['created'] - 50), float(order['order_data']['price']) + 10, der, color=order_color)
 
-
 def analyze_run(deals_folder, run_folder, colors, offset=None, limit=None):
     deals_df = get_deals_df(deals_folder)
     if offset is not None:
         deals_df = deals_df[offset:limit]
         # print(deals_df)
-    plt.plot(deals_df['date'], deals_df['price'])
+    fig1 = plt.figure()
+    ax1 = fig1.add_subplot(111)
+    ax1.plot(deals_df['date'], deals_df['price'])
     orders = None
+    min_date = min(deals_df['date'])
+    max_date = max(deals_df['date'])
+    days = range(min_date, max_date, 3600 * 24)
     if run_folder:
         orders = get_orders_from_json(run_folder)
     if db_file:
         orders = get_orders_from_db(db_file)
     if orders:
-        max_time = max(deals_df['date'])
         for order in orders:
-            if int(order['created']) < max_time:
-                plot_order(order, colors, max_time, deals_df)
+            if int(order['created']) < max_date:
+                plot_order(order, colors, max_date, deals_df)
 
     # print('Completed profit orders: {}'.format(orders['profit']['completed']))
     # print('Created profit orders: {}'.format(orders['profit']['created']))
-    plt.ylim(ymin=min(deals_df['price']) - 100, ymax=max(deals_df['price']) + 100)
-    plt.xlim(xmin=min(deals_df['date']), xmax=max(deals_df['date']))
+    min_price = min(deals_df['price']) - 100
+    max_price = max(deals_df['price']) + 100
+    # plt.ylim(ymin=min_price, ymax=max_price)
+    plt.xlim(xmin=min_date, xmax=max(deals_df['date']))
+
+    for day in days:
+        ax1.axvline(day, color='lightgray', linestyle=':')
+    window = 2000
+    current_trend = 1
+    order_price = None
+    current_price = 12000
+    limit_price = None
+    deals_df['mean'] = deals_df['price'].rolling(window).mean()
+    plt.plot(deals_df['date'], deals_df['mean'], color='black')
+    # for i in range(20000, len(deals_df) - 1, 100):
+    #     print(i)
+    #     df = pd.DataFrame(deals_df[i-20000:i])
+    #     df['mean'] = df['price'].rolling(window).mean()
+    #     # df['sg'] = sg.savgol_filter(df['price'], 19999, 3)
+    #     #
+    #     # plt.plot(deals_df['date'], deals_df['sg'], color='yellow')
+    #     # derivative = df['sg'].diff(periods=100)
+    #     # df['derivative'] = derivative
+    #     # for i, row in deals_df.iterrows():
+    #     #     der = row['derivative']
+    #     row = df.iloc[-1]
+    #     der = row['mean'] - current_price
+    #     if np.sign(current_trend) != np.sign(der):
+    #         if limit_price is None:
+    #             limit_price = row['mean']
+    #         else:
+    #             if abs(row['mean'] - limit_price) > 50:
+    #                 if order_price is None or np.sign(row['price'] - order_price) == np.sign(current_trend):
+    #                     ax1.axvline(row['date'], color='green' if der > 0 else 'orange', linestyle=':')
+    #                     order_price = row['price']
+    #                     limit_price = None
+    #                     current_trend = der
+    #     else:
+    #         limit_price = None
+    #     current_der = der
+    #     current_price = row['mean']
+    # ax2 = ax1.twinx()
+
+    # ax2.plot(mean_func['date'], derivative, color='bisque')
+    # ax2.axhline(0)
+    # for day in days:
+    #     ax2.axvline(day, color='lightgray', linestyle=':')
     plt.show()
 
 
@@ -212,4 +262,5 @@ colors = {
                 }
         },
 }
+
 analyze_run(deals_folder, run_folder, colors)

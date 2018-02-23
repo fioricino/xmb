@@ -4,7 +4,7 @@ import os
 import pandas as pd
 from tabulate import tabulate
 
-base_folder = r'real_data_test\test_month'
+base_folder = r'real_data_test\test_month1'
 
 stat_file = 'stats.json'
 

@@ -18,11 +18,6 @@ class TrendAnalyzer:
         else:
             self._rolling_window = 6
 
-        if 'profit_multiplier' in kwargs:
-            self._profit_multiplier = kwargs['profit_multiplier']
-        else:
-            self._profit_multiplier = 64
-
         if 'mean_price_period' in kwargs:
             self._mean_price_period = kwargs['mean_price_period']
         else:
@@ -32,16 +27,6 @@ class TrendAnalyzer:
             self._interpolation_degree = kwargs['interpolation_degree']
         else:
             self._interpolation_degree = 20
-
-        if 'profit_free_weight' in kwargs:
-            self._profit_free_weight = kwargs['profit_free_weight']
-        else:
-            self._profit_free_weight = 0
-
-        if 'reserve_multiplier' in kwargs:
-            self._reserve_multiplier = kwargs['reserve_multiplier']
-        else:
-            self._reserve_multiplier = 0
 
 
     def _get_prices_for_period(self, deals):
@@ -95,8 +80,6 @@ class TrendAnalyzer:
             derivative_func = self._get_derivative_func(last_deals)
             index = -1
             last_derivative = derivative_func.iloc[index]
-            profit_markup = abs(self._profit_multiplier * last_derivative) + self._profit_free_weight
-            reserve_markup = abs(self._reserve_multiplier * last_derivative)
             period = self._mean_price_period
             mean_price = self._calculate_mean_price(trades, period)
             tries_count = 0
@@ -105,16 +88,16 @@ class TrendAnalyzer:
                 mean_price = self._calculate_mean_price(trades, period)
             if mean_price is None:
                 raise ValueError('Cannot calculate mean price')
-            logger.debug('Deal time: {}\nDeal id: {}\nLast derivative: {}\nProfit markup: {}\nMean price: {}'.format(
-                time.ctime(int(trades[-1]['date'])), trades[-1]['trade_id'], last_derivative, profit_markup, mean_price
+            logger.debug('Deal time: {}\nDeal id: {}\nLast derivative: {}\nMean price: {}'.format(
+                time.ctime(int(trades[-1]['date'])), trades[-1]['trade_id'], last_derivative, mean_price
             ))
 
             if last_derivative >= 0:
-                return 'UP', profit_markup, reserve_markup, mean_price
+                return 'UP', mean_price
             if last_derivative < 0:
-                return 'DOWN', profit_markup, reserve_markup, mean_price
+                return 'DOWN', mean_price
         except:
-            return None, None, None, None
+            return None, None
 
     def _calculate_mean_price(self, deals, mean_price_period):
         prices = []

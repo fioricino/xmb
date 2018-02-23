@@ -40,6 +40,7 @@ class JsonStorage:
             'order_id': str(order['order_id']),
             'type': order['type'],
             'price': order['price'],
+            'mean_price': order['mean_price'],
             'quantity': order['quantity'],
             'profile': profile,
             'order_type': order_type,

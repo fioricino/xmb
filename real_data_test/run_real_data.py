@@ -4,15 +4,15 @@ import logging
 import os
 from datetime import datetime
 
-from KDEDealSizer import KDEDealSizer
+from ConstDealSizer import ConstDealSizer
 from calc import Calc
 from json_api import JsonStorage
+from trend_advisor import TrendReserveAdvisor
 
 logging.basicConfig(level=logging.INFO)
 
 from exmo_general import Worker
 from real_data_test.market_simulator import MarketSimulator
-from trend_analyze import TrendAnalyzer
 from logging.handlers import RotatingFileHandler
 
 import shutil
@@ -97,19 +97,24 @@ def run(cfg, base_folder, handlers):
     # storage = SQLiteStorage(os.path.join(run_folder, 'test.db'))
     storage = JsonStorage(os.path.join(run_folder, 'orders.json'), archive_dir)
 
-    ta = TrendAnalyzer(**cfg)
-    ta._current_time = lambda: sim.timestamp
+    # ta = TrendAnalyzer(**cfg)
+    # ta._current_time = lambda: sim.timestamp
 
-    advisor = InstantAdvisor(sim, ta)
+
     # ds = ConstDealSizer(**cfg)
 
     deal_provider = DealsProvider(sim.deals)
-    ds = KDEDealSizer(deal_provider, **cfg)
+    ds = ConstDealSizer(**cfg)
     ds._get_time = lambda: sim.timestamp
+    tra = TrendReserveAdvisor(deal_provider, storage, **cfg)
+    advisor = InstantAdvisor(sim, tra)
 
     timestamp = sim.get_timestamp()
     last_timestamp = sim.get_max_timestamp()
-    worker = Worker(sim, storage, advisor, ds,
+
+    # profit_advisor = InstantProfitAdvisor(**cfg)
+
+    worker = Worker(sim, storage, advisor, advisor, ds,
                     **cfg)
     worker._get_time = lambda: sim.timestamp
     worker._is_order_partially_completed = lambda x, y: False
@@ -118,11 +123,13 @@ def run(cfg, base_folder, handlers):
     last_stat_timestamp = timestamp
     while timestamp < last_timestamp:
         try:
+            if timestamp == 1517516182:
+                timestamp = 1517544194
             timestamp += 1
             logger.debug('Update timestamp: {}'.format(timestamp))
             sim.update_timestamp(timestamp)
-            advisor.update_timestamp(timestamp)
             deal_provider.update_timestamp(timestamp)
+            advisor.update_timestamp(timestamp)
             worker.main_flow()
             # if timestamp - last_stat_timestamp >= 1000:
             #     logger.info('Stats: {}'.format(get_stats(sim, storage, worker._stock_fee)))
@@ -160,20 +167,23 @@ class InstantAdvisor:
     def __init__(self, deal_provider, trend_analyzer):
         self._ta = trend_analyzer
         self._deal_provider = deal_provider
-        self.period = 5
+        self.period = 10
         self.timestamp = 0
         self.last_update_ts = 0
 
+    def get_profit_order(self, base_order):
+        return self._ta.get_profit_order(base_order)
+
     def get_advice(self):
-        return self.profile, self.profit_markup, self.reserve_markup, self.avg_price
+        return self.profile, self.avg_price, self.mean_price
 
     def get_avg_price(self):
         return self.avg_price
 
     def update_timestamp(self, timestamp):
         if timestamp - self.last_update_ts > self.period:
-            self.profile, self.profit_markup, self.reserve_markup, self.avg_price = self._ta.get_profile(
-                self._deal_provider.get_trades(None, None))
+            self._ta.tick()
+            self.profile, self.avg_price, self.mean_price = self._ta.get_profile()
             self.last_update_ts = timestamp
 
 
@@ -181,7 +191,7 @@ class DealsProvider:
     def __init__(self, all_deals):
         self.all_deals = all_deals
         self.timestamp = 0
-        self.period = 300
+        self.period = 100
         self.last_update_ts = 0
         self.cur_deals = []
         self.index = 0
@@ -198,7 +208,6 @@ class DealsProvider:
 
 
 args = {
-    'profit_order_lifetime': [64],
     'stock_fee': [0.002],
     'profit_markup': [0.01],
     'currency_1_deal_size': [0.0015],
@@ -206,45 +215,33 @@ args = {
     'max_profit_orders_down': [100],
     'same_profile_order_price_deviation': [0.01],
 
-    'profit_multiplier': [128],
     'mean_price_period': [16],
-    'profit_free_weight': [0.01],
-    # 'derivative_step': [2, 3, 4, 5],
     'profit_currency_down': ['USD'],
     'profit_currency_up': ['USD'],
     'initial_timestamp': [1517515848],
-    # 'target_currency': ['USD'],
-    # 'target_profit': [0.5],
-    # 'target_period': [2],
-    # 'currency_1_max_deal_size': [0.002],
-    # 'suspend_order_deviation': [None, 0.03],
 
-    'kde_multiplier': [0.001],
-    'kde_bandwith': [150],
-    'kde_days': [37],
     'last_deals': [100]
+
 }
 
 cfgs = [
     {
-        'profit_order_lifetime': 64,
         'stock_fee': 0.002,
         'profit_markup': 0.01,
         'currency_1_deal_size': 0.001,
         'max_profit_orders_up': 100,
         'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.01,
+        'same_profile_order_price_deviation': 0.05,
 
-        'profit_multiplier': 128,
         'mean_price_period': 16,
-        'profit_free_weight': 0.01,
         'profit_currency_down': 'BTC',
         'profit_currency_up': 'USD',
-        'initial_timestamp': 1517515848,
+        'initial_timestamp': 1517574194,  # 1517515848,
         'kde_multiplier': 0,
         'kde_bandwith': 150,
         'kde_days': 7,
-        'last_deals': 100
+        'last_deals': 100,
+        'limit_price_deviation': 0.03
     },
 
 
@@ -256,7 +253,7 @@ configs = [dict(cfg) for cfg in product]
 handlers = []
 for cfg in cfgs:
     try:
-        handlers = run(cfg, 'test_month', handlers)
+        handlers = run(cfg, 'test_month2', handlers)
     except:
         logger.exception('Error')
 
