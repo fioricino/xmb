@@ -3,6 +3,7 @@ import hmac
 import http.client
 import json
 import logging
+import math
 import time
 import urllib
 import urllib.parse
@@ -69,7 +70,7 @@ class ExmoApi:
 
     def _call_api(self, api_method, http_method="POST", **kwargs):
         logger.debug('Call Exmo api. Method {}. Payload: {}'.format(api_method, kwargs))
-        payload = {'nonce': int(round(time.time() * 1000))}
+        payload = {'nonce': int(math.floor(time.time() * 1000))}
 
         if kwargs:
             payload.update(kwargs)
