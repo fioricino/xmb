@@ -66,7 +66,7 @@ args = {
 
 stat_args = {
     'rolling_window': 6,
-    'profit_multiplier': 64,
+    'profit_multiplier': 0,
     'mean_price_period': 16,
     'interpolation_degree': 20,
     'profit_free_weight': 0.01,

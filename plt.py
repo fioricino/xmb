@@ -11,7 +11,8 @@ from sqlite_api import SQLiteStorage
 from trend_analyze import TrendAnalyzer
 
 deals_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\datasets'
-run_folder = None  # r'C:\Users\ozavorot\Documents\GitHub\xmb\test'
+run_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\test_month\c1ds_0' \
+             r'.001_it_1517515848_kb_150_kd_1_km_0_ld_100_mpod_100_mpou_100_mpp_16_pcd_BTC_pcu_USD_pfw_0_pm_0_pm_0_pol_64_spopd_0.004_sf_0.002_'
 db_file = None  # r'C:\Users\ozavorot\Documents\GitHub\xmb\datasets\orders.db'
 
 
@@ -105,19 +106,21 @@ def plot_order(order, colors, max_time, deals_df):
         return
     create_time = int(order['created'])
     price = float(order['price'])
-    plt.plot(create_time, price, color=order_color, marker='s')
+    quantity = float(order['quantity'])
+    plt.plot(create_time, price, color=order_color, marker='s',
+             markersize=5 * quantity / 0.001 if order['order_type'] == 'RESERVE' else 5)
 
     if order['status'] == 'COMPLETED':
         if order['completed'] is not None:
             complete_time = int(order['completed'])
-            plt.plot(complete_time, price, color=order_color, marker='o')
+            plt.plot(complete_time, price, color=order_color, marker='o', markersize=5)
             x = np.arange(create_time, complete_time, 1)
             y = np.repeat(price, len(x))
             plt.plot(x, y, color=order_color)
     elif order['status'] == 'CANCELED':
         if order['completed'] is not None:
             cancel_time = int(order['completed'])
-            plt.plot(cancel_time, price, color=order_color, marker='x')
+            plt.plot(cancel_time, price, color=order_color, marker='x', markersize=5)
             x = np.arange(create_time, cancel_time, 100)
             y = np.repeat(price, len(x))
             plt.plot(x, y, ':', color=order_color)
@@ -168,6 +171,19 @@ def analyze_run(deals_folder, run_folder, colors, offset=None, limit=None):
     # print('Created profit orders: {}'.format(orders['profit']['created']))
     plt.ylim(ymin=min(deals_df['price']) - 100, ymax=max(deals_df['price']) + 100)
     plt.xlim(xmin=min(deals_df['date']), xmax=max(deals_df['date']))
+
+    min_date = min(deals_df['date'])
+    max_date = max(deals_df['date'])
+    days = range(min_date, max_date, 3600 * 24)
+    for day in days:
+        plt.axvline(day, color='lightgray', linestyle=':')
+
+    window = 10000
+    deals_df['mean'] = deals_df['price'].rolling(window).mean()
+    # deals_df['mean2x'] = deals_df['price'].rolling(window*2).mean()
+    plt.plot(deals_df['date'], deals_df['mean'], color='black')
+    # plt.plot(deals_df['date'], deals_df['mean2x'], color='purple')
+
     plt.show()
 
 

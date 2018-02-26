@@ -221,7 +221,7 @@ args = {
 
     'kde_multiplier': [0.001],
     'kde_bandwith': [150],
-    'kde_days': [37],
+    'kde_days': [7],
     'last_deals': [100]
 }
 
@@ -229,25 +229,143 @@ cfgs = [
     {
         'profit_order_lifetime': 64,
         'stock_fee': 0.002,
-        'profit_markup': 0.01,
+        'profit_markup': 0.04,
         'currency_1_deal_size': 0.001,
         'max_profit_orders_up': 100,
         'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.01,
+        'same_profile_order_price_deviation': 0.04,
 
-        'profit_multiplier': 128,
+        'profit_multiplier': 0,
         'mean_price_period': 16,
-        'profit_free_weight': 0.01,
+        'profit_free_weight': 0.04,
         'profit_currency_down': 'BTC',
         'profit_currency_up': 'USD',
         'initial_timestamp': 1517515848,
+        'last_deals': 100,
         'kde_multiplier': 0,
         'kde_bandwith': 150,
-        'kde_days': 7,
-        'last_deals': 100
+        'kde_days': 1
     },
+    {
+        'profit_order_lifetime': 64,
+        'stock_fee': 0.002,
+        'profit_markup': 0.03,
+        'currency_1_deal_size': 0.001,
+        'max_profit_orders_up': 100,
+        'max_profit_orders_down': 100,
+        'same_profile_order_price_deviation': 0.03,
 
+        'profit_multiplier': 0,
+        'mean_price_period': 16,
+        'profit_free_weight': 0.03,
+        'profit_currency_down': 'BTC',
+        'profit_currency_up': 'USD',
+        'initial_timestamp': 1517515848,
+        'last_deals': 100,
+        'kde_multiplier': 0,
+        'kde_bandwith': 150,
+        'kde_days': 1
+    },
+    {
+        'profit_order_lifetime': 64,
+        'stock_fee': 0.002,
+        'profit_markup': 0.06,
+        'currency_1_deal_size': 0.001,
+        'max_profit_orders_up': 100,
+        'max_profit_orders_down': 100,
+        'same_profile_order_price_deviation': 0.06,
 
+        'profit_multiplier': 0,
+        'mean_price_period': 16,
+        'profit_free_weight': 0.06,
+        'profit_currency_down': 'BTC',
+        'profit_currency_up': 'USD',
+        'initial_timestamp': 1517515848,
+        'last_deals': 100,
+        'kde_multiplier': 0,
+        'kde_bandwith': 150,
+        'kde_days': 1
+    },
+    {
+        'profit_order_lifetime': 64,
+        'stock_fee': 0.002,
+        'profit_markup': 0.05,
+        'currency_1_deal_size': 0.001,
+        'max_profit_orders_up': 100,
+        'max_profit_orders_down': 100,
+        'same_profile_order_price_deviation': 0.05,
+
+        'profit_multiplier': 0,
+        'mean_price_period': 16,
+        'profit_free_weight': 0.05,
+        'profit_currency_down': 'BTC',
+        'profit_currency_up': 'USD',
+        'initial_timestamp': 1517515848,
+        'last_deals': 100,
+        'kde_multiplier': 3,
+        'kde_bandwith': 150,
+        'kde_days': 7
+    },
+    {
+        'profit_order_lifetime': 64,
+        'stock_fee': 0.002,
+        'profit_markup': 0.05,
+        'currency_1_deal_size': 0.001,
+        'max_profit_orders_up': 100,
+        'max_profit_orders_down': 100,
+        'same_profile_order_price_deviation': 0.05,
+
+        'profit_multiplier': 0,
+        'mean_price_period': 16,
+        'profit_free_weight': 0.05,
+        'profit_currency_down': 'BTC',
+        'profit_currency_up': 'USD',
+        'initial_timestamp': 1517515848,
+        'last_deals': 100,
+        'kde_multiplier': 5,
+        'kde_bandwith': 150,
+        'kde_days': 7
+    },
+    {
+        'profit_order_lifetime': 64,
+        'stock_fee': 0.002,
+        'profit_markup': 0.05,
+        'currency_1_deal_size': 0.001,
+        'max_profit_orders_up': 100,
+        'max_profit_orders_down': 100,
+        'same_profile_order_price_deviation': 0.05,
+
+        'profit_multiplier': 0,
+        'mean_price_period': 16,
+        'profit_free_weight': 0.05,
+        'profit_currency_down': 'BTC',
+        'profit_currency_up': 'USD',
+        'initial_timestamp': 1517515848,
+        'last_deals': 100,
+        'kde_multiplier': 3,
+        'kde_bandwith': 150,
+        'kde_days': 10
+    },
+    {
+        'profit_order_lifetime': 64,
+        'stock_fee': 0.002,
+        'profit_markup': 0,
+        'currency_1_deal_size': 0.001,
+        'max_profit_orders_up': 100,
+        'max_profit_orders_down': 100,
+        'same_profile_order_price_deviation': 0.004,
+
+        'profit_multiplier': 0,
+        'mean_price_period': 16,
+        'profit_free_weight': 0,
+        'profit_currency_down': 'BTC',
+        'profit_currency_up': 'USD',
+        'initial_timestamp': 1517515848,
+        'last_deals': 100,
+        'kde_multiplier': 0,
+        'kde_bandwith': 150,
+        'kde_days': 1
+    },
 ]
 
 d = [list(zip(itertools.repeat(arg, len(values)), values)) for arg, values in args.items()]
