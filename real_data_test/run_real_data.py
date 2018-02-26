@@ -4,9 +4,9 @@ import logging
 import os
 from datetime import datetime
 
-from KDEDealSizer import KDEDealSizer
 from calc import Calc
 from json_api import JsonStorage
+from trend_deal_sizer import TrendDealSizer
 
 logging.basicConfig(level=logging.INFO)
 
@@ -104,7 +104,7 @@ def run(cfg, base_folder, handlers):
     # ds = ConstDealSizer(**cfg)
 
     deal_provider = DealsProvider(sim.deals)
-    ds = KDEDealSizer(deal_provider, **cfg)
+    ds = TrendDealSizer(deal_provider, **cfg)
     ds._get_time = lambda: sim.timestamp
 
     timestamp = sim.get_timestamp()
@@ -229,66 +229,6 @@ cfgs = [
     {
         'profit_order_lifetime': 64,
         'stock_fee': 0.002,
-        'profit_markup': 0.04,
-        'currency_1_deal_size': 0.001,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.04,
-
-        'profit_multiplier': 0,
-        'mean_price_period': 16,
-        'profit_free_weight': 0.04,
-        'profit_currency_down': 'BTC',
-        'profit_currency_up': 'USD',
-        'initial_timestamp': 1517515848,
-        'last_deals': 100,
-        'kde_multiplier': 0,
-        'kde_bandwith': 150,
-        'kde_days': 1
-    },
-    {
-        'profit_order_lifetime': 64,
-        'stock_fee': 0.002,
-        'profit_markup': 0.03,
-        'currency_1_deal_size': 0.001,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.03,
-
-        'profit_multiplier': 0,
-        'mean_price_period': 16,
-        'profit_free_weight': 0.03,
-        'profit_currency_down': 'BTC',
-        'profit_currency_up': 'USD',
-        'initial_timestamp': 1517515848,
-        'last_deals': 100,
-        'kde_multiplier': 0,
-        'kde_bandwith': 150,
-        'kde_days': 1
-    },
-    {
-        'profit_order_lifetime': 64,
-        'stock_fee': 0.002,
-        'profit_markup': 0.06,
-        'currency_1_deal_size': 0.001,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.06,
-
-        'profit_multiplier': 0,
-        'mean_price_period': 16,
-        'profit_free_weight': 0.06,
-        'profit_currency_down': 'BTC',
-        'profit_currency_up': 'USD',
-        'initial_timestamp': 1517515848,
-        'last_deals': 100,
-        'kde_multiplier': 0,
-        'kde_bandwith': 150,
-        'kde_days': 1
-    },
-    {
-        'profit_order_lifetime': 64,
-        'stock_fee': 0.002,
         'profit_markup': 0.05,
         'currency_1_deal_size': 0.001,
         'max_profit_orders_up': 100,
@@ -302,70 +242,12 @@ cfgs = [
         'profit_currency_up': 'USD',
         'initial_timestamp': 1517515848,
         'last_deals': 100,
-        'kde_multiplier': 3,
-        'kde_bandwith': 150,
-        'kde_days': 7
+        'trend_diff_hours': 24,
+        'trend_rolling_window': 5000,
+        'trend_days': 7,
+        'trend_multiplier': 20
     },
-    {
-        'profit_order_lifetime': 64,
-        'stock_fee': 0.002,
-        'profit_markup': 0.05,
-        'currency_1_deal_size': 0.001,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.05,
 
-        'profit_multiplier': 0,
-        'mean_price_period': 16,
-        'profit_free_weight': 0.05,
-        'profit_currency_down': 'BTC',
-        'profit_currency_up': 'USD',
-        'initial_timestamp': 1517515848,
-        'last_deals': 100,
-        'kde_multiplier': 5,
-        'kde_bandwith': 150,
-        'kde_days': 7
-    },
-    {
-        'profit_order_lifetime': 64,
-        'stock_fee': 0.002,
-        'profit_markup': 0.05,
-        'currency_1_deal_size': 0.001,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.05,
-
-        'profit_multiplier': 0,
-        'mean_price_period': 16,
-        'profit_free_weight': 0.05,
-        'profit_currency_down': 'BTC',
-        'profit_currency_up': 'USD',
-        'initial_timestamp': 1517515848,
-        'last_deals': 100,
-        'kde_multiplier': 3,
-        'kde_bandwith': 150,
-        'kde_days': 10
-    },
-    {
-        'profit_order_lifetime': 64,
-        'stock_fee': 0.002,
-        'profit_markup': 0,
-        'currency_1_deal_size': 0.001,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.004,
-
-        'profit_multiplier': 0,
-        'mean_price_period': 16,
-        'profit_free_weight': 0,
-        'profit_currency_down': 'BTC',
-        'profit_currency_up': 'USD',
-        'initial_timestamp': 1517515848,
-        'last_deals': 100,
-        'kde_multiplier': 0,
-        'kde_bandwith': 150,
-        'kde_days': 1
-    },
 ]
 
 d = [list(zip(itertools.repeat(arg, len(values)), values)) for arg, values in args.items()]
@@ -374,7 +256,7 @@ configs = [dict(cfg) for cfg in product]
 handlers = []
 for cfg in cfgs:
     try:
-        handlers = run(cfg, 'test_month', handlers)
+        handlers = run(cfg, 'test', handlers)
     except:
         logger.exception('Error')
 
