@@ -226,11 +226,12 @@ args = {
 }
 
 cfgs = [
+
     {
         'profit_order_lifetime': 64,
         'stock_fee': 0.002,
         'profit_markup': 0.05,
-        'currency_1_deal_size': 0.001,
+        'currency_1_deal_size': 0.002,
         'max_profit_orders_up': 100,
         'max_profit_orders_down': 100,
         'same_profile_order_price_deviation': 0.05,
@@ -245,7 +246,8 @@ cfgs = [
         'trend_diff_hours': 24,
         'trend_rolling_window': 5000,
         'trend_days': 7,
-        'trend_multiplier': 20
+        'trend_multiplier': 20,
+        'trend_profit_multiplier': 2
     },
 
 ]
@@ -256,7 +258,7 @@ configs = [dict(cfg) for cfg in product]
 handlers = []
 for cfg in cfgs:
     try:
-        handlers = run(cfg, 'test', handlers)
+        handlers = run(cfg, 'test_02_26', handlers)
     except:
         logger.exception('Error')
 

@@ -314,6 +314,9 @@ class Worker:
     def _create_reserve_order(self, profile, avg_price, reserve_markup):
         my_need_price = self._calculate_desired_reserve_price(avg_price, profile, reserve_markup)
         my_amount = self._calculate_desired_reserve_amount(profile, avg_price)
+        # if my_amount < self._currency_1_min_deal_size:
+        #     logger.debug('Deal size too small')
+        #     return
         order_type = self._reserve_order_type(profile)
         new_order_id = str(self._api.create_order(
             currency_1=self._currency_1,
@@ -432,7 +435,7 @@ class Worker:
             if self._profit_currency_up == self._currency_1:
                 return max(self._currency_1_min_deal_size,
                            self._deal_sizer.get_deal_size(price, profile) / (
-                           (1 - self._profit_markup) * (1 - self._stock_fee)))
+                               (1 - self._profit_markup) * (1 - self._stock_fee)))
             elif self._profit_currency_up == self._currency_2:
                 return max(self._currency_1_min_deal_size,
                            self._deal_sizer.get_deal_size(price, profile) / (1 - self._stock_fee))

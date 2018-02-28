@@ -48,6 +48,7 @@ class JsonStorage:
             'profit_markup': profit_markup,
             'created': created
         }
+        order_to_store = dict(order, **order_to_store)
         logger.debug('Save order: %s', order_to_store)
         self.orders[str(order['order_id'])] = order_to_store
         self.save_orders()

@@ -49,30 +49,22 @@ args = {
     'currency_1': 'BTC',
     'currency_2': 'USD',
     'stock_fee': 0.002,
-    'profit_markup': 0.01,
+    'profit_markup': 0.05,
     'reserve_price_avg_price_deviation': 0.002,
     'profit_price_prev_price_deviation': 0.0001,
     'currency_1_deal_size': 0.001,
     'max_profit_orders_up': 100,
     'max_profit_orders_down': 100,
-    'same_profile_order_price_deviation': 0.01,
+    'same_profile_order_price_deviation': 0.05,
     'profit_currency_down': 'BTC',
-    'profit_currency_up': 'USD'
-    # 'target_currency': 'USD',
-    # 'target_profit': 0.5,
-    # 'target_period': 2,
-    # 'currency_1_max_deal_size': 0.002
-}
-
-stat_args = {
+    'profit_currency_up': 'USD',
     'rolling_window': 6,
     'profit_multiplier': 0,
     'mean_price_period': 16,
     'interpolation_degree': 20,
-    'profit_free_weight': 0.01,
+    'profit_free_weight': 0.05,
     'reserve_multiplier': 0,
 }
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -88,7 +80,7 @@ if __name__ == '__main__':
 
     storage = SQLiteStorage(os.path.join('real_run', 'orders.db'))
 
-    trend_analyzer = TrendAnalyzer(**stat_args)
+    trend_analyzer = TrendAnalyzer(**args)
 
     advisor = BackgroundStatAdvisor(trend_analyzer, exmo_public_api, period=1)
     ds = ConstDealSizer(**args)
