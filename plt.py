@@ -12,8 +12,10 @@ import json
 from sqlite_api import SQLiteStorage
 from trend_analyze import TrendAnalyzer
 
-deals_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\datasets'
-run_folder = None  # r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\test_02_26\c1ds_0.002_c1mds_0
+deals_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\datasets1'
+run_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\test_03_01\c1ds_0.002_c1mds_0' \
+             r'.001_itmds_False_it_1517087771_ld_100_mpod_100_mpou_100_mpp_16_pfw_0.05_pm_0.05_pm_0_spopd_0.05_sf_0' \
+             r'.002_td_2_tdh_24_tm_20_trw_12_'
 # .002_it_1517515848_ld_100_mpod_100_mpou_100_mpp_16_pcd_BTC_pcu_USD_pfw_0.05_pm_0.05_pm_0_pol_64_spopd_0.05_sf_0
 # .002_td_7_tdh_24_tm_20_trw_5000_'
 db_file = None  # r'C:\Users\ozavorot\Documents\GitHub\xmb\datasets\orders.db'
@@ -187,14 +189,20 @@ def analyze_run(deals_folder, run_folder, colors, offset=None, limit=None):
     deals_df['mean'] = deals_df['price'].rolling(window).mean()
     deals_df['time'] = pd.to_datetime(deals_df['date'], unit='s')
     deals_df = deals_df.set_index('time')
-    deals_df['mean_5day'] = deals_df.rolling(timedelta(days=5))['price'].mean()
+    # deals_df['mean_5day'] = deals_df.rolling(timedelta(days=5))['price'].mean()
     deals_df['mean_12h'] = deals_df.rolling(timedelta(hours=12))['price'].mean()
-    deals_df['mean_1day'] = deals_df.rolling(timedelta(days=1))['price'].mean()
-    deals_df['mean_10day'] = deals_df.rolling(timedelta(days=10))['price'].mean()
+    # deals_df['min_10day'] = deals_df.rolling(timedelta(days=10))['mean_12h'].min()
+    # deals_df['max_10day'] = deals_df.rolling(timedelta(days=10))['mean_12h'].max()
+    # deals_df['mean_total'] = deals_df.rolling(timedelta(days=50))['price'].mean()
+    # deals_df['mean_1day'] = deals_df.rolling(timedelta(days=1))['price'].mean()
+    # deals_df['mean_10day'] = deals_df.rolling(timedelta(days=10))['price'].mean()
     plt.plot(deals_df['date'], deals_df['mean'], color='black')
-    plt.plot(deals_df['date'], deals_df['mean_5day'], color='cyan')
+    # plt.plot(deals_df['date'], deals_df['mean_5day'], color='cyan')
+    # plt.plot(deals_df['date'], deals_df['min_10day'], color='green')
+    # plt.plot(deals_df['date'], deals_df['max_10day'], color='darkblue')
+    # plt.plot(deals_df['date'], deals_df['mean_total'], color='yellow')
     plt.plot(deals_df['date'], deals_df['mean_12h'], color='purple')
-    plt.plot(deals_df['date'], deals_df['mean_10day'], color='red')
+    # plt.plot(deals_df['date'], deals_df['mean_10day'], color='red')
 
     plt.show()
 

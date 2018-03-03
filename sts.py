@@ -4,7 +4,7 @@ import os
 import pandas as pd
 from tabulate import tabulate
 
-base_folder = r'real_data_test\test_02_26'
+base_folder = r'real_data_test\test_03_01'
 
 stat_file = 'stats.json'
 
@@ -58,6 +58,7 @@ def get_run_stats(base_folder):
     result = walk_dir(base_folder)
 
     df = pd.DataFrame(result)
+
     df = df.sort_values('total_rate', ascending=False)
     return df
 
@@ -69,4 +70,7 @@ base_columns = ['profit', 'orders']
 # base_columns.extend(columns)
 
 df.to_csv(os.path.join(base_folder, 'df.csv'))
+if 'itmds' in df:
+    df['itmds'] = df['itmds'].astype(str)
+    df['itmds'] = df['itmds'].replace('nan', '-')
 print(tabulate(df, headers='keys', tablefmt='psql'))
