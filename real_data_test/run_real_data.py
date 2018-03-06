@@ -226,7 +226,6 @@ args = {
 }
 
 cfgs = [
-
     {
         'stock_fee': 0.002,
         'profit_markup': 0.05,
@@ -238,14 +237,14 @@ cfgs = [
         'profit_multiplier': 0,
         'mean_price_period': 16,
         'profit_free_weight': 0.05,
-        'initial_timestamp': 1517087771,
+        'initial_timestamp': 1517170000,
         'last_deals': 100,
-        'trend_diff_hours': 24,
-        'trend_rolling_window': 12,
-        'trend_days': 2,
-        'trend_multiplier': 20,
+        'trend_diff_hours': 1,
+        'trend_rolling_window': 3000,
+        'trend_days': 3,
+        'trend_multiplier': 40,
         'increase_to_min_deal_size': False,
-        'currency_1_min_deal_size': 0.002
+        'currency_1_min_deal_size': 0.0025,
     },
     {
         'stock_fee': 0.002,
@@ -258,14 +257,14 @@ cfgs = [
         'profit_multiplier': 0,
         'mean_price_period': 16,
         'profit_free_weight': 0.05,
-        'initial_timestamp': 1517087771,
+        'initial_timestamp': 1517170000,
         'last_deals': 100,
-        'trend_diff_hours': 24,
-        'trend_rolling_window': 12,
-        'trend_days': 2,
-        'trend_multiplier': 10,
+        'trend_diff_hours': 1,
+        'trend_rolling_window': 4000,
+        'trend_days': 3,
+        'trend_multiplier': 50,
         'increase_to_min_deal_size': False,
-        'currency_1_min_deal_size': 0.002
+        'currency_1_min_deal_size': 0.0025,
     },
     {
         'stock_fee': 0.002,
@@ -278,14 +277,14 @@ cfgs = [
         'profit_multiplier': 0,
         'mean_price_period': 16,
         'profit_free_weight': 0.05,
-        'initial_timestamp': 1517087771,
+        'initial_timestamp': 1517170000,
         'last_deals': 100,
-        'trend_diff_hours': 24,
-        'trend_rolling_window': 18,
-        'trend_days': 2,
-        'trend_multiplier': 20,
+        'trend_diff_hours': 1,
+        'trend_rolling_window': 4000,
+        'trend_days': 3,
+        'trend_multiplier': 30,
         'increase_to_min_deal_size': False,
-        'currency_1_min_deal_size': 0.002
+        'currency_1_min_deal_size': 0.0025,
     },
 ]
 

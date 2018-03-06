@@ -15,15 +15,20 @@ class TrendDealSizer:
         else:
             self._trend_multiplier = 10
 
+        if 'trend_price_diff_multiplier' in kwargs:
+            self._trend_price_diff_multiplier = float(kwargs['trend_price_diff_multiplier'])
+        else:
+            self._trend_price_diff_multiplier = 0
+
         if 'trend_days' in kwargs:
             self._trend_days = int(kwargs['trend_days'])
         else:
             self._trend_days = 7
 
         if 'trend_rolling_window' in kwargs:
-            self._trend_rolling_window = timedelta(hours=int(kwargs['trend_rolling_window']))
+            self._trend_rolling_window = kwargs['trend_rolling_window']
         else:
-            self._trend_rolling_window = timedelta(hours=12)
+            self._trend_rolling_window = 5000
 
         if 'trend_diff_hours' in kwargs:
             self._trend_diff_hours = int(kwargs['trend_diff_hours'])
@@ -59,20 +64,25 @@ class TrendDealSizer:
                 deals = [d for d in ds if d['date'] > start_time]
                 prices = [float(p['price']) for p in deals]
                 deals_df = pd.DataFrame(deals).convert_objects(convert_numeric=True)
-                deals_df['time'] = pd.to_datetime(deals_df['date'], unit='s')
-                deals_df = deals_df.set_index('time')
-                deals_df['mean'] = deals_df.rolling(self._trend_rolling_window)['price'].mean()
+                # deals_df['time'] = pd.to_datetime(deals_df['date'], unit='s')
+                # deals_df = deals_df.set_index('time')
+                deals_df['mean'] = deals_df['price'].rolling(self._trend_rolling_window).mean()
                 last_deal = deals_df.iloc[-1]
                 der_delta = timedelta(hours=self._trend_diff_hours).total_seconds()
                 start_time = int(last_deal['date']) - der_delta
                 first_deal = deals_df[deals_df['date'] >= start_time].iloc[0]
 
-                price_diff = (last_deal['mean'] - first_deal['mean']) / first_deal['mean']
-                mult_base = abs(price_diff) * self._trend_multiplier + 1
+                mean_price_diff = (last_deal['mean'] - first_deal['mean']) / first_deal['mean']
+                cur_price_diff = (last_deal['mean'] - price) / last_deal['mean']
+                if mean_price_diff < 0:
+                    cur_price_diff = -cur_price_diff
+                mult_base = abs(
+                    mean_price_diff) * self._trend_multiplier + cur_price_diff * self._trend_price_diff_multiplier + 1
                 mult_contr = 1 / mult_base
                 deal_same = mult_base * self._currency_1_deal_size
                 deal_contr = mult_contr * self._currency_1_deal_size
-                if price_diff >= 0:
+
+                if mean_price_diff >= 0:
                     self.last_deal_size_up = deal_same
                     self.last_deal_size_down = deal_contr
                 else:
@@ -88,7 +98,7 @@ class TrendDealSizer:
             return deal_size
         except:
             logger.exception('Cannot calculate deal size')
-            return self._currency_1_deal_size
+            return 0
 
     def _get_time(self):
         return int(time.time())

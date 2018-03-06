@@ -511,6 +511,7 @@ class Worker:
         raise ValueError('Invalid profile: ' + profile)
 
     def _recalculate_profit_order_price(self, profit_order, ser_trades):
+        return
         profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
         if int(self._get_time() - profit_order['created']) > self._profit_order_lifetime \
                 and float(profit_order['profit_markup']) != self._profit_markup:
