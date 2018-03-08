@@ -100,16 +100,18 @@ def run(cfg, base_folder, handlers):
     ta = TrendAnalyzer(**cfg)
     ta._current_time = lambda: sim.timestamp
 
-    advisor = InstantAdvisor(sim, ta)
-    # ds = ConstDealSizer(**cfg)
-
     deal_provider = DealsProvider(sim.deals)
     ds = TrendDealSizer(deal_provider, **cfg)
     ds._get_time = lambda: sim.timestamp
 
+    advisor = InstantAdvisor(sim, ds)
+    # ds = ConstDealSizer(**cfg)
+
+
+
     timestamp = sim.get_timestamp()
     last_timestamp = sim.get_max_timestamp()
-    worker = Worker(sim, storage, advisor, ds,
+    worker = Worker(sim, storage, advisor,
                     **cfg)
     worker._get_time = lambda: sim.timestamp
     worker._is_order_partially_completed = lambda x, y: False
@@ -160,20 +162,20 @@ class InstantAdvisor:
     def __init__(self, deal_provider, trend_analyzer):
         self._ta = trend_analyzer
         self._deal_provider = deal_provider
-        self.period = 5
+        self.period = 900
         self.timestamp = 0
         self.last_update_ts = 0
 
     def get_advice(self):
-        return self.profile, self.profit_markup, self.reserve_markup, self.avg_price
+        return self.profile, self.profit_markup, self.avg_price, self.deal_size
 
     def get_avg_price(self):
         return self.avg_price
 
     def update_timestamp(self, timestamp):
         if timestamp - self.last_update_ts > self.period:
-            self.profile, self.profit_markup, self.reserve_markup, self.avg_price = self._ta.get_profile(
-                self._deal_provider.get_trades(None, None))
+            self.profile, self.profit_markup, self.avg_price, self.deal_size = self._ta.get_deal_size(
+            )
             self.last_update_ts = timestamp
 
 
@@ -181,17 +183,13 @@ class DealsProvider:
     def __init__(self, all_deals):
         self.all_deals = all_deals
         self.timestamp = 0
-        self.period = 1800
-        self.last_update_ts = 0
         self.cur_deals = []
         self.index = 0
 
     def update_timestamp(self, timestamp):
         self.timestamp = timestamp
-        if self.timestamp - self.last_update_ts >= self.period:
-            self.last_update_ts = timestamp
-            while int(self.all_deals[self.index]['date']) < timestamp:
-                self.index += 1
+        while int(self.all_deals[self.index]['date']) < timestamp:
+            self.index += 1
 
     def get_deals(self):
         return self.all_deals[:self.index]
@@ -226,6 +224,8 @@ args = {
 }
 
 cfgs = [
+
+
     {
         'stock_fee': 0.002,
         'profit_markup': 0.05,
@@ -234,16 +234,13 @@ cfgs = [
         'max_profit_orders_down': 100,
         'same_profile_order_price_deviation': 0.05,
 
-        'profit_multiplier': 0,
         'mean_price_period': 16,
-        'profit_free_weight': 0.05,
         'initial_timestamp': 1517170000,
         'last_deals': 100,
-        'trend_diff_hours': 1,
-        'trend_rolling_window': 3000,
+        'trend_diff_hours': 5,
+        'trend_rolling_window': 4000,
         'trend_days': 3,
-        'trend_multiplier': 40,
-        'increase_to_min_deal_size': False,
+        'trend_multiplier': 12,
         'currency_1_min_deal_size': 0.0025,
     },
     {
@@ -254,36 +251,13 @@ cfgs = [
         'max_profit_orders_down': 100,
         'same_profile_order_price_deviation': 0.05,
 
-        'profit_multiplier': 0,
         'mean_price_period': 16,
-        'profit_free_weight': 0.05,
         'initial_timestamp': 1517170000,
         'last_deals': 100,
-        'trend_diff_hours': 1,
+        'trend_diff_hours': 6,
         'trend_rolling_window': 4000,
         'trend_days': 3,
-        'trend_multiplier': 50,
-        'increase_to_min_deal_size': False,
-        'currency_1_min_deal_size': 0.0025,
-    },
-    {
-        'stock_fee': 0.002,
-        'profit_markup': 0.05,
-        'currency_1_deal_size': 0.002,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.05,
-
-        'profit_multiplier': 0,
-        'mean_price_period': 16,
-        'profit_free_weight': 0.05,
-        'initial_timestamp': 1517170000,
-        'last_deals': 100,
-        'trend_diff_hours': 1,
-        'trend_rolling_window': 4000,
-        'trend_days': 3,
-        'trend_multiplier': 30,
-        'increase_to_min_deal_size': False,
+        'trend_multiplier': 10,
         'currency_1_min_deal_size': 0.0025,
     },
 ]
