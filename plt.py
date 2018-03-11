@@ -12,10 +12,10 @@ import json
 from sqlite_api import SQLiteStorage
 from trend_analyze import TrendAnalyzer
 
-deals_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\datasets1'
-run_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\test_03_01\c1ds_0.002_c1mds_0' \
-             r'.0025_itmds_False_it_1517170000_ld_100_mpod_100_mpou_100_mpp_16_pfw_0.05_pm_0.05_pm_0_spopd_0.05_sf_0' \
-             r'.002_td_3_tdh_1_tm_40_trw_4000_'
+deals_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\datasets2'
+run_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\test_03_09\c1ds_0.002_c1mds_0' \
+             r'.0025_it_1519110000_ld_100_mpod_100_mpou_100_mpp_16_pm_0.05_spopd_0.04_sf_0.002_spd_0.05_spudd_0' \
+             r'.01_td_3_tdh_5_tmds_0.0025_tm_60_trw_5000_'
 db_file = None  # r'C:\Users\ozavorot\Documents\GitHub\xmb\datasets\orders.db'
 
 
@@ -183,7 +183,7 @@ def analyze_run(deals_folder, run_folder, colors, offset=None, limit=None):
     for day in days:
         plt.axvline(day, color='lightgray', linestyle=':')
 
-    window = 5000
+    window = 4000
 
     deals_df['mean'] = deals_df['price'].rolling(window).mean()
     deals_df['mean_3000'] = deals_df['price'].rolling(3000).mean()
@@ -199,14 +199,14 @@ def analyze_run(deals_folder, run_folder, colors, offset=None, limit=None):
     deals_df['mean_10day'] = deals_df.rolling(timedelta(days=10))['price'].mean()
     plt.plot(deals_df['date'], deals_df['mean'], color='black')
     # plt.plot(deals_df['date'], deals_df['mean_5day'], color='cyan')
-    # plt.plot(deals_df['date'], deals_df['min_10day'], color='green')
-    # plt.plot(deals_df['date'], deals_df['max_10day'], color='darkblue')
+    # plt.plot(deals_df['date'], deals_df['min_10day'], color='red')
+    # plt.plot(deals_df['date'], deals_df['max_10day'], color='green')
     # plt.plot(deals_df['date'], deals_df['mean_total'], color='yellow')
     plt.plot(deals_df['date'], deals_df['mean_12h'], color='purple')
     # plt.plot(deals_df['date'], deals_df['mean_10day'], color='red')
 
-    plt.plot(deals_df['date'], deals_df['mean_10day'], color='red')
-    plt.plot(deals_df['date'], deals_df['mean_5day'], color='green')
+    # plt.plot(deals_df['date'], deals_df['mean_10day'], color='red')
+    # plt.plot(deals_df['date'], deals_df['mean_5day'], color='green')
 
     plt.show()
 

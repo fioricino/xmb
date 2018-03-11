@@ -45,15 +45,15 @@ class TrendDealSizer:
         else:
             self._currency_1_deal_size = 0.001
 
-        if 'currency_1_min_deal_size' in kwargs:
-            self._currency_1_min_deal_size = kwargs['currency_1_min_deal_size']
-        else:
-            self._currency_1_min_deal_size = 0.001
-
         if 'mean_price_period' in kwargs:
             self._mean_price_period = kwargs['mean_price_period']
         else:
             self._mean_price_period = 16
+
+        if 'trend_max_deal_size' in kwargs:
+            self._trend_max_deal_size = kwargs['trend_max_deal_size']
+        else:
+            self._trend_max_deal_size = 1
 
     def get_deal_size(self):
         try:
@@ -79,7 +79,7 @@ class TrendDealSizer:
             deal_same = mult_base * self._currency_1_deal_size
             avg_price = self._calculate_mean_price(deals, self._mean_price_period)
 
-            return profile, self._profit_markup, avg_price, deal_same
+            return profile, self._profit_markup, avg_price, min(deal_same, self._trend_max_deal_size)
         except:
             logger.exception('Cannot calculate deal size')
             return None, None, None, None

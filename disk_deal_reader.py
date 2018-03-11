@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import time
 
 
 class DiskDealReader:
@@ -16,7 +17,6 @@ class DiskDealReader:
             start_date = 0
         else:
             start_date = self._get_time() - datetime.timedelta(days=self._deal_read_days).total_seconds()
-        TODO
         files = [f for f in os.listdir(self._deals_folder) if int(os.path.splitext(f)[0]) > start_date]
         deals = {}
         for filename in files:
@@ -27,3 +27,6 @@ class DiskDealReader:
                 except:
                     pass
         return sorted(deals.values(), key=lambda v: (int(v['date']), int(v['trade_id'])))
+
+    def _get_time(self):
+        return int(time.time())

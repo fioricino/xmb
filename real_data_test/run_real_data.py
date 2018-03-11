@@ -90,7 +90,7 @@ def run(cfg, base_folder, handlers):
     handlers = create_handlers(logs_dir)
     archive_dir = os.path.join(run_folder, 'archive')
     os.makedirs(archive_dir)
-    sim = MarketSimulator('datasets1', initial_btc_balance=1,
+    sim = MarketSimulator('datasets2', initial_btc_balance=1,
                           initial_usd_balance=10000,
                           stock_fee=cfg['stock_fee'], last_deals=cfg['last_deals'],
                           initial_timestamp=cfg['initial_timestamp'])
@@ -110,14 +110,14 @@ def run(cfg, base_folder, handlers):
 
 
     timestamp = sim.get_timestamp()
-    last_timestamp = sim.get_max_timestamp()
+    last_timestamp = sim.get_max_timestamp() if 'last_timestamp' not in cfg or cfg['last_timestamp'] is None else cfg[
+        'last_timestamp']
     worker = Worker(sim, storage, advisor,
                     **cfg)
     worker._get_time = lambda: sim.timestamp
     worker._is_order_partially_completed = lambda x, y: False
     worker._is_order_in_trades = lambda x, y: True
     worker._check_balances = sim.check_balances
-    last_stat_timestamp = timestamp
     while timestamp < last_timestamp:
         try:
             timestamp += 10
@@ -225,41 +225,27 @@ args = {
 
 cfgs = [
 
-
     {
         'stock_fee': 0.002,
         'profit_markup': 0.05,
         'currency_1_deal_size': 0.002,
         'max_profit_orders_up': 100,
         'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.05,
+        'same_profile_order_price_deviation': 0.04,
 
         'mean_price_period': 16,
         'initial_timestamp': 1517170000,
         'last_deals': 100,
         'trend_diff_hours': 5,
-        'trend_rolling_window': 4000,
+        'trend_rolling_window': 5000,
         'trend_days': 3,
-        'trend_multiplier': 12,
+        'trend_multiplier': 40,
         'currency_1_min_deal_size': 0.0025,
+        'suspend_price_deviation': 0.05,
+        'suspend_price_up_down_deviation': 0.01,
+        'trend_max_deal_size': 0.0025
     },
-    {
-        'stock_fee': 0.002,
-        'profit_markup': 0.05,
-        'currency_1_deal_size': 0.002,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.05,
 
-        'mean_price_period': 16,
-        'initial_timestamp': 1517170000,
-        'last_deals': 100,
-        'trend_diff_hours': 6,
-        'trend_rolling_window': 4000,
-        'trend_days': 3,
-        'trend_multiplier': 10,
-        'currency_1_min_deal_size': 0.0025,
-    },
 ]
 
 d = [list(zip(itertools.repeat(arg, len(values)), values)) for arg, values in args.items()]
@@ -268,7 +254,7 @@ configs = [dict(cfg) for cfg in product]
 handlers = []
 for cfg in cfgs:
     try:
-        handlers = run(cfg, 'test_03_01', handlers)
+        handlers = run(cfg, 'test_03_09', handlers)
     except:
         logger.exception('Error')
 

@@ -5,15 +5,15 @@ import sys
 from logging.handlers import RotatingFileHandler
 from threading import Thread
 
-from ConstDealSizer import ConstDealSizer
 from advisor import BackgroundStatAdvisor
+from disk_deal_reader import DiskDealReader
 from exmo_api import ExmoApi
 from exmo_api_proxy import ExmoApiProxy
 from exmo_general import Worker
 
 # run period in seconds
 from sqlite_api import SQLiteStorage
-from trend_analyze import TrendAnalyzer
+from trend_deal_sizer import TrendDealSizer
 
 logger = logging.getLogger('xmb')
 logger.setLevel(logging.DEBUG)
@@ -43,27 +43,30 @@ def create_handlers(dr):
 create_handlers(os.path.join('real_run', 'logs'))
 
 args = {
-    'profit_price_avg_price_deviation': 0.001,
-    'profit_order_lifetime': 64,
     'period': 1,
     'currency_1': 'BTC',
     'currency_2': 'USD',
     'stock_fee': 0.002,
     'profit_markup': 0.05,
     'reserve_price_avg_price_deviation': 0.002,
-    'profit_price_prev_price_deviation': 0.0001,
-    'currency_1_deal_size': 0.001,
+    'currency_1_deal_size': 0.008,
     'max_profit_orders_up': 100,
     'max_profit_orders_down': 100,
-    'same_profile_order_price_deviation': 0.05,
+    'same_profile_order_price_deviation': 0.04,
     'profit_currency_down': 'BTC',
     'profit_currency_up': 'USD',
-    'rolling_window': 6,
+    'rolling_window': 5000,
     'profit_multiplier': 0,
     'mean_price_period': 16,
-    'interpolation_degree': 20,
-    'profit_free_weight': 0.05,
-    'reserve_multiplier': 0,
+    'deal_read_days': 4,
+    'trend_diff_hours': 5,
+    'trend_rolling_window': 5000,
+    'trend_days': 3,
+    'trend_multiplier': 40,
+    'currency_1_min_deal_size': 0.01,
+    'suspend_price_deviation': 0.05,
+    'suspend_price_up_down_deviation': 0.01,
+    'trend_max_deal_size': 0.01
 }
 
 if __name__ == '__main__':
@@ -80,14 +83,14 @@ if __name__ == '__main__':
 
     storage = SQLiteStorage(os.path.join('real_run', 'orders.db'))
 
-    trend_analyzer = TrendAnalyzer(**args)
+    dp = DiskDealReader(r'C:\Users\ozavorot\Documents\GitHub\xmb\trades-2018-02-15', **args)
+    ds = TrendDealSizer(dp, **args)
 
-    advisor = BackgroundStatAdvisor(trend_analyzer, exmo_public_api, period=1)
-    ds = ConstDealSizer(**args)
+    advisor = BackgroundStatAdvisor(ds, exmo_public_api, period=300)
+
     worker = Worker(exmo_api,
                     storage,
                     advisor,
-                    ds,
                     **args)
     t = Thread(target=worker.run)
     t.run()

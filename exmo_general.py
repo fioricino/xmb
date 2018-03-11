@@ -107,32 +107,15 @@ class Worker:
         else:
             self._profit_currency_down = self._currency_1
 
-        if 'target_period' in kwargs:
-            self._target_period = kwargs['target_period']
+        if 'suspend_price_deviation' in kwargs:
+            self._suspend_deviation = kwargs['suspend_price_deviation']
         else:
-            self._target_period = None
+            self._suspend_deviation = None
 
-        if 'target_profit' in kwargs:
-            self._target_profit = kwargs['target_profit']
+        if 'suspend_price_up_down_deviation' in kwargs:
+            self._suspend_price_up_down_deviation = kwargs['suspend_price_up_down_deviation']
         else:
-            self._target_profit = None
-
-        if 'target_currency' in kwargs:
-            self._target_currency = kwargs['target_currency']
-        else:
-            self._target_currency = self._currency_2
-
-        if 'profit_compensation_periods' in kwargs:
-            self._profit_compensation_periods = kwargs['profit_compensation_periods']
-        else:
-            self._profit_compensation_periods = 1
-
-
-
-        self.profit_remainder = 0
-
-        # self._current_deal_size = self._deal_sizer.get_deal_size()
-        self._current_period = None
+            self._suspend_price_up_down_deviation = 0.05
 
 
     # TODO move
@@ -255,12 +238,25 @@ class Worker:
         try:
             profit_orders = [o for o in all_orders if o['order_type'] == 'PROFIT'
                              and o['base_order']['order_id'] == order['order_id']]
+            profile, profit_markup, avg_price, deal_size = self._advisor.get_advice()
+            price = float(order['price'])
             if not profit_orders:
-                self._create_profit_order(order)
-
+                if self._suspend_deviation is None \
+                        or order['profile'] == 'UP' and (
+                            price - avg_price) / price <= self._suspend_deviation - \
+                                self._suspend_price_up_down_deviation \
+                        or order['profile'] == 'DOWN' and (
+                            avg_price - price) / price <= self._suspend_deviation - self._suspend_price_up_down_deviation:
+                    self._create_profit_order(order)
             else:
-                for profit_order in profit_orders:
-                    self._recalculate_profit_order_price(profit_order, user_trades)
+                if self._suspend_deviation is not None \
+                        and (order['profile'] == 'UP' and (
+                            price - avg_price) / price >= self._suspend_deviation +
+                            self._suspend_price_up_down_deviation \
+                                     or order['profile'] == 'DOWN' and (
+                                avg_price - price) / price >= self._suspend_deviation + self._suspend_price_up_down_deviation):
+                    for profit_order in profit_orders:
+                        self._cancel_order(profit_order)
         except Exception as e:
             logger.exception('Cannot handle order waiting for profit {}'.format(order['order_id']))
 
