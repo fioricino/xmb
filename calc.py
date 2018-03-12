@@ -3,8 +3,8 @@ from datetime import datetime
 
 
 class Calc:
-    def __init__(self, api, storage, start_time, fee):
-        self._api = api
+    def __init__(self, storage, start_time, fee):
+        # self._api = api
         self._storage = storage
         self._start_time = start_time
         self._fee = fee

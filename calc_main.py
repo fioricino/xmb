@@ -4,12 +4,11 @@ from datetime import datetime
 from pprint import pprint
 
 from calc import Calc
-from exmo_api import ExmoApi
 from sqlite_api import SQLiteStorage
 
 FEE = 0.002
 
-START_TIME = datetime(2018, 3, 9, 0, 0, 0)
+START_TIME = datetime(2018, 3, 11, 0, 0, 0)
 
 ORDER_FILE = r'real_run\orders.db'
 
@@ -19,11 +18,11 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--secret', type=str, help='Api secret')
     sysargs = parser.parse_args(sys.argv[1:])
 
-    exmo_api = ExmoApi(sysargs.key, sysargs.secret)
+    # exmo_api = ExmoApi(sysargs.key, sysargs.secret)
 
     st = SQLiteStorage(ORDER_FILE)
 
-    calc = Calc(exmo_api, st, START_TIME, FEE)
+    calc = Calc(st, START_TIME, FEE)
     ok_deals, profit = calc.get_profit()
     pprint(ok_deals)
     pprint(profit)

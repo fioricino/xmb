@@ -183,7 +183,7 @@ def analyze_run(deals_folder, run_folder, colors, offset=None, limit=None):
     for day in days:
         plt.axvline(day, color='lightgray', linestyle=':')
 
-    window = 4000
+    window = 5000
 
     deals_df['mean'] = deals_df['price'].rolling(window).mean()
     deals_df['mean_3000'] = deals_df['price'].rolling(3000).mean()
@@ -192,15 +192,15 @@ def analyze_run(deals_folder, run_folder, colors, offset=None, limit=None):
     deals_df = deals_df.set_index('time')
     deals_df['mean_5day'] = deals_df.rolling(timedelta(days=5))['price'].mean()
     deals_df['mean_12h'] = deals_df.rolling(timedelta(hours=12))['price'].mean()
-    # deals_df['min_10day'] = deals_df.rolling(timedelta(days=10))['mean_12h'].min()
-    # deals_df['max_10day'] = deals_df.rolling(timedelta(days=10))['mean_12h'].max()
+    deals_df['min_10day'] = deals_df.rolling(timedelta(days=10))['mean_12h'].min()
+    deals_df['max_10day'] = deals_df.rolling(timedelta(days=10))['mean_12h'].max()
     # deals_df['mean_total'] = deals_df.rolling(timedelta(days=50))['price'].mean()
     # deals_df['mean_1day'] = deals_df.rolling(timedelta(days=1))['price'].mean()
     deals_df['mean_10day'] = deals_df.rolling(timedelta(days=10))['price'].mean()
     plt.plot(deals_df['date'], deals_df['mean'], color='black')
     # plt.plot(deals_df['date'], deals_df['mean_5day'], color='cyan')
-    # plt.plot(deals_df['date'], deals_df['min_10day'], color='red')
-    # plt.plot(deals_df['date'], deals_df['max_10day'], color='green')
+    plt.plot(deals_df['date'], deals_df['min_10day'], color='red')
+    plt.plot(deals_df['date'], deals_df['max_10day'], color='green')
     # plt.plot(deals_df['date'], deals_df['mean_total'], color='yellow')
     plt.plot(deals_df['date'], deals_df['mean_12h'], color='purple')
     # plt.plot(deals_df['date'], deals_df['mean_10day'], color='red')

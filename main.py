@@ -55,18 +55,18 @@ args = {
     'same_profile_order_price_deviation': 0.04,
     'profit_currency_down': 'BTC',
     'profit_currency_up': 'USD',
-    'rolling_window': 5000,
     'profit_multiplier': 0,
     'mean_price_period': 16,
     'deal_read_days': 4,
     'trend_diff_hours': 5,
-    'trend_rolling_window': 5000,
+    'trend_rolling_window': 4000,
     'trend_days': 3,
     'trend_multiplier': 40,
-    'currency_1_min_deal_size': 0.01,
+    'currency_1_min_deal_size': 0.001,
     'suspend_price_deviation': 0.05,
     'suspend_price_up_down_deviation': 0.01,
-    'trend_max_deal_size': 0.01
+    'trend_max_deal_size': 0.01,
+    'trend_min_deal_size': 0.01
 }
 
 if __name__ == '__main__':

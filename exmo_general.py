@@ -82,6 +82,11 @@ class Worker:
         else:
             self._currency_1_min_deal_size = 0.001
 
+        if 'trend_min_deal_size' in kwargs:
+            self._trend_min_deal_size = kwargs['trend_min_deal_size']
+        else:
+            self._trend_min_deal_size = 0.001
+
         if 'max_profit_orders_up' in kwargs:
             self._max_profit_orders_up = kwargs['max_profit_orders_up']
         else:
@@ -416,7 +421,7 @@ class Worker:
         raise ValueError('Unrecognized profile: ' + profile)
 
     def _calculate_desired_reserve_amount(self, profile, price, deal_size):
-        if deal_size < self._currency_1_min_deal_size:
+        if deal_size < self._trend_min_deal_size:
             return None
         if profile == 'UP':
             if self._profit_currency_up == self._currency_1:
