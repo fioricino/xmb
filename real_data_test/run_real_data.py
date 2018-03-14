@@ -56,7 +56,7 @@ logger.addHandler(ch)
 
 
 def get_stats(sim, storage, stock_fee):
-    calc = Calc(sim, storage, datetime(2000, 1, 1, 0, 0, 0), stock_fee)
+    calc = Calc(storage, datetime(2000, 1, 1, 0, 0, 0), stock_fee)
     return calc.get_profit()
     # stat = {'USD': sim.balances['USD'], 'BTC': sim.balances['BTC'],
     #         # 'BTC_ord': sim.get_balances_with_orders()['BTC'],
