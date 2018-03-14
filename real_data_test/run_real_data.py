@@ -6,7 +6,7 @@ from datetime import datetime
 
 from calc import Calc
 from json_api import JsonStorage
-from trend_deal_sizer import TrendDealSizer
+from min_max_deal_sizer import MinMaxDealSizer
 
 logging.basicConfig(level=logging.INFO)
 
@@ -56,7 +56,7 @@ logger.addHandler(ch)
 
 
 def get_stats(sim, storage, stock_fee):
-    calc = Calc(sim, storage, datetime(2000, 1, 1, 0, 0, 0), stock_fee)
+    calc = Calc(storage, datetime(2000, 1, 1, 0, 0, 0), stock_fee)
     return calc.get_profit()
     # stat = {'USD': sim.balances['USD'], 'BTC': sim.balances['BTC'],
     #         # 'BTC_ord': sim.get_balances_with_orders()['BTC'],
@@ -101,7 +101,7 @@ def run(cfg, base_folder, handlers):
     ta._current_time = lambda: sim.timestamp
 
     deal_provider = DealsProvider(sim.deals)
-    ds = TrendDealSizer(deal_provider, **cfg)
+    ds = MinMaxDealSizer(deal_provider, **cfg)
     ds._get_time = lambda: sim.timestamp
 
     advisor = InstantAdvisor(sim, ds)
@@ -167,15 +167,15 @@ class InstantAdvisor:
         self.last_update_ts = 0
 
     def get_advice(self):
-        return self.profile, self.profit_markup, self.avg_price, self.deal_size
+        return self.data
 
     def get_avg_price(self):
         return self.avg_price
 
     def update_timestamp(self, timestamp):
         if timestamp - self.last_update_ts > self.period:
-            self.profile, self.profit_markup, self.avg_price, self.deal_size = self._ta.get_deal_size(
-            )
+            self.data = (self._ta.get_deal_size(
+            ))
             self.last_update_ts = timestamp
 
 
@@ -227,24 +227,21 @@ cfgs = [
 
     {
         'stock_fee': 0.002,
-        'profit_markup': 0.04,
+        'profit_markup': 0.05,
         'currency_1_deal_size': 0.002,
         'max_profit_orders_up': 100,
         'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.032,
+        'same_profile_order_price_deviation': 0.1,
 
         'mean_price_period': 16,
-        'initial_timestamp': 1518050000,
+        'initial_timestamp': 1517870000,
         'last_deals': 100,
         'trend_diff_hours': 5,
-        'trend_rolling_window': 4500,
-        'trend_days': 3,
-        'trend_multiplier': 40,
+        'trend_rolling_window': 5000,
+        'trend_days': 11,
         'currency_1_min_deal_size': 0.001,
-        'trend_min_deal_size': 0.0025,
-        'suspend_price_deviation': 0.05,
-        'suspend_price_up_down_deviation': 0.01,
-        'trend_max_deal_size': 0.0025
+        'price_limit_diff': 0.02,
+        'limit_days': 10
     },
 ]
 

@@ -14,8 +14,8 @@ from trend_analyze import TrendAnalyzer
 
 deals_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\datasets2'
 run_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\test_03_09\c1ds_0.002_c1mds_0' \
-             r'.0025_it_1519110000_ld_100_mpod_100_mpou_100_mpp_16_pm_0.05_spopd_0.04_sf_0.002_spd_0.05_spudd_0' \
-             r'.01_td_3_tdh_5_tmds_0.0025_tm_60_trw_5000_'
+             r'.0025_it_1518050000_ld_100_mpod_100_mpou_100_mpp_16_pm_0.05_spopd_0.04_sf_0.002_spd_0.05_spudd_0' \
+             r'.01_td_3_tdh_5_tmds_0.0025_tm_70_trw_4000_'
 db_file = None  # r'C:\Users\ozavorot\Documents\GitHub\xmb\datasets\orders.db'
 
 

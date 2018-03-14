@@ -42,6 +42,11 @@ class Worker:
         else:
             self._profit_order_lifetime = 60
 
+        if 'currency_1_deal_size' in kwargs:
+            self._currency_1_deal_size = kwargs['currency_1_deal_size']
+        else:
+            self._currency_1_deal_size = 0.002
+
         if 'period' in kwargs:
             self._period = kwargs['period']
         else:
@@ -206,27 +211,32 @@ class Worker:
         self._create_profit_order(order)
 
     def _handle_open_reserve_order(self, order, user_trades):
-        profile, profit_markup, mean_price, deal_size = self._advisor.get_advice()
-        if order['profile'] == profile:
-            my_need_price = self._calculate_desired_reserve_price(mean_price, profile, 0)
-            if math.fabs(my_need_price - float(order['price'])) > float(
-                    order['price']) * self._reserve_price_avg_price_deviation:
-                logger.debug('Reserve price has changed for order {} -> {}: {}'
-                             .format(order['order_id'], order['price'], my_need_price))
-                is_order_partially_completed = self._is_order_partially_completed(order, user_trades)
-                if is_order_partially_completed:
-                    logger.debug('Order {} is partially completed'.format(order['order_id']))
-                else:
-                    self._cancel_order(order)
-
-        else:
-            #TODO id it required?
-            logger.debug('Profile has changed for order {}: {} -> {}'
-                         .format(order['order_id'], order['profile'], profile))
-            if profit_markup < self._profit_markup:
-                logger.debug("Profit to small, won't cancel order {}".format(order['order_id']))
+        profile, mean_price, create_order = self._advisor.get_advice()
+        # if not create_order:
+        #     self._cancel_order(order)
+        #     return
+        # if order['profile'] == profile:
+        my_need_price = self._calculate_desired_reserve_price(mean_price, order['profile'], 0)
+        if math.fabs(my_need_price - float(order['price'])) > float(
+                order['price']) * self._reserve_price_avg_price_deviation:
+            logger.debug('Reserve price has changed for order {} -> {}: {}'
+                         .format(order['order_id'], order['price'], my_need_price))
+            is_order_partially_completed = self._is_order_partially_completed(order, user_trades)
+            if is_order_partially_completed:
+                logger.debug('Order {} is partially completed'.format(order['order_id']))
             else:
                 self._cancel_order(order)
+                self._create_reserve_order(order['profile'], mean_price, 0, self._currency_1_deal_size)
+
+
+                # else:
+                #     #TODO id it required?
+                #     logger.debug('Profile has changed for order {}: {} -> {}'
+                #                  .format(order['order_id'], order['profile'], profile))
+                #     if profit_markup < self._profit_markup:
+                #         logger.debug("Profit to small, won't cancel order {}".format(order['order_id']))
+                #     else:
+                #         self._cancel_order(order)
 
     def _is_order_partially_completed(self, order, user_trades):
         return order['order_id'] in [str(t['order_id']) for t in
@@ -243,7 +253,7 @@ class Worker:
         try:
             profit_orders = [o for o in all_orders if o['order_type'] == 'PROFIT'
                              and o['base_order']['order_id'] == order['order_id']]
-            profile, profit_markup, avg_price, deal_size = self._advisor.get_advice()
+            profile, avg_price, create_order = self._advisor.get_advice()
             price = float(order['price'])
             if not profit_orders:
                 if self._suspend_deviation is None \
@@ -272,7 +282,9 @@ class Worker:
 
     def _make_reserve(self):
         try:
-            profile, profit_markup, avg_price, deal_size = self._advisor.get_advice()
+            profile, avg_price, create_order = self._advisor.get_advice()
+            if not create_order:
+                return
             all_orders = self._storage.get_open_orders()
             same_profile_orders = [o for o in all_orders if o['profile'] == profile and o['order_type'] == 'RESERVE'
                                    # or o['status'] == 'WAIT_FOR_PROFIT' and not o['order_id']
@@ -283,11 +295,12 @@ class Worker:
             if len(same_profile_orders) >= self._get_max_open_profit_orders_limit(profile):
                 logger.debug('Too much orders for profile {}: {}'.format(profile, len(same_profile_orders)))
                 return
-            if profit_markup < self._profit_markup:
-                logger.debug('Too small profit markup: {:.4f} < {}'.format(profit_markup, self._profit_markup))
-                return
             # Ордер с минимальным отклонением от текущей средней цены
             if same_profile_orders:
+                same_profile_better_orders = [o for o in same_profile_orders if profile == 'UP' and float(
+                    o['price']) <= avg_price or profile == 'DOWN' and float(o['price']) >= avg_price]
+                if same_profile_better_orders:
+                    return
                 # TODO check
                 min_price_diff = min(
                     [abs(float(
@@ -298,7 +311,7 @@ class Worker:
                     logger.debug('Price deviation with other orders is too small: {} < {}'.format(min_price_diff,
                                                                                                   self._same_profile_order_price_deviation))
                     return
-            self._create_reserve_order(profile, avg_price, 0, deal_size)
+            self._create_reserve_order(profile, avg_price, 0, self._currency_1_deal_size)
         except Exception as e:
             logger.exception('Cannot make reserve')
 
@@ -346,9 +359,14 @@ class Worker:
             return self._api.get_user_trades(self._currency_1, self._currency_2)
 
     def _create_profit_order(self, base_order):
+        profile, avg_price, create_order = self._advisor.get_advice()
+
         # profile, profit_markup, reserve_markup, avg_price = self._advisor.get_advice()
         base_status = base_order['status']
         base_profile = base_order['profile']
+
+        if not create_order or profile == base_profile:
+            return
         # if profile != base_profile:
         #     logger.debug('Profile has changed: {}->{}. Will not create profit order for reserve order {}'
         #                  .format(base_profile, profile, base_order['order_id']))
@@ -364,35 +382,37 @@ class Worker:
         quantity = self._calculate_profit_quantity(float(base_order['quantity']), base_profile, order_profit_markup)
         price = self._calculate_profit_price(quantity, float(base_order['quantity']), float(base_order['price']),
                                              base_profile, order_profit_markup)
-        order_type = self._profit_order_type(base_profile)
-        logger.info('Create new profit order for base order: {}'.format(base_order['order_id']))
-        new_order_id = str(self._api.create_order(
-            currency_1=self._currency_1,
-            currency_2=self._currency_2,
-            quantity=quantity,
-            price=price,
-            type=order_type,
-        ))
-        open_orders = self._get_open_orders_for_create()
-        new_orders = [order for order in open_orders if str(order['order_id']) == new_order_id]
-        if not new_orders:
-            # Order already completed
-            # Fixme what to do in this case?
-            time.sleep(1)
+        if base_profile == 'UP' and avg_price > price or base_profile == 'DOWN' and avg_price < price:
+            price = avg_price
+            order_type = self._profit_order_type(base_profile)
+            logger.info('Create new profit order for base order: {}'.format(base_order['order_id']))
+            new_order_id = str(self._api.create_order(
+                currency_1=self._currency_1,
+                currency_2=self._currency_2,
+                quantity=quantity,
+                price=price,
+                type=order_type,
+            ))
+            open_orders = self._get_open_orders_for_create()
             new_orders = [order for order in open_orders if str(order['order_id']) == new_order_id]
             if not new_orders:
-                user_trades = self._get_user_trades()
-                new_orders = [order for order in user_trades if str(order['order_id']) == new_order_id]
-        if not new_orders:
-            raise ApiError('Order not found: {}'.format(new_order_id))
-        new_order = new_orders[0]
-        new_order['quantity'] = str(quantity)
-        new_order['price'] = str(price)
+                # Order already completed
+                # Fixme what to do in this case?
+                time.sleep(1)
+                new_orders = [order for order in open_orders if str(order['order_id']) == new_order_id]
+                if not new_orders:
+                    user_trades = self._get_user_trades()
+                    new_orders = [order for order in user_trades if str(order['order_id']) == new_order_id]
+            if not new_orders:
+                raise ApiError('Order not found: {}'.format(new_order_id))
+            new_order = new_orders[0]
+            new_order['quantity'] = str(quantity)
+            new_order['price'] = str(price)
 
-        stored_order = self._storage.create_order(new_order, base_profile, 'PROFIT', base_order=base_order,
-                                                  created=self._get_time(), profit_markup=order_profit_markup)
-        # self._storage.update_order_status(base_order['order_id'], 'PROFIT_ORDER_CREATED', self._get_time())
-        logger.info('Created new profit order: {}'.format(stored_order))
+            stored_order = self._storage.create_order(new_order, base_profile, 'PROFIT', base_order=base_order,
+                                                      created=self._get_time(), profit_markup=order_profit_markup)
+            # self._storage.update_order_status(base_order['order_id'], 'PROFIT_ORDER_CREATED', self._get_time())
+            logger.info('Created new profit order: {}'.format(stored_order))
 
     def _get_open_orders_for_create(self):
         try:
