@@ -4,9 +4,9 @@ import logging
 import os
 from datetime import datetime
 
-from KDEDealSizer import KDEDealSizer
 from calc import Calc
 from json_api import JsonStorage
+from trend_deal_sizer import TrendDealSizer
 
 logging.basicConfig(level=logging.INFO)
 
@@ -56,7 +56,7 @@ logger.addHandler(ch)
 
 
 def get_stats(sim, storage, stock_fee):
-    calc = Calc(sim, storage, datetime(2000, 1, 1, 0, 0, 0), stock_fee)
+    calc = Calc(storage, datetime(2000, 1, 1, 0, 0, 0), stock_fee)
     return calc.get_profit()
     # stat = {'USD': sim.balances['USD'], 'BTC': sim.balances['BTC'],
     #         # 'BTC_ord': sim.get_balances_with_orders()['BTC'],
@@ -69,6 +69,20 @@ def get_stats(sim, storage, stock_fee):
 
 
 def run(cfg, base_folder, handlers):
+    sim = MarketSimulator('datasets3', initial_btc_balance=1,
+                          initial_usd_balance=10000,
+                          stock_fee=cfg['stock_fee'], last_deals=cfg['last_deals'],
+                          initial_timestamp=cfg['initial_timestamp'])
+    timestamp = sim.get_timestamp()
+    if 'duration_days' in cfg and cfg['duration_days'] is not None:
+        last_timestamp = timestamp + cfg['duration_days'] * 24 * 60 * 60
+        if last_timestamp > sim.get_max_timestamp():
+            return
+    else:
+        last_timestamp = sim.get_max_timestamp() if 'last_timestamp' not in cfg or cfg['last_timestamp'] is None else \
+        cfg[
+            'last_timestamp']
+
     folder = ''
     for k in sorted(cfg):
         names = k.split('_')
@@ -90,35 +104,32 @@ def run(cfg, base_folder, handlers):
     handlers = create_handlers(logs_dir)
     archive_dir = os.path.join(run_folder, 'archive')
     os.makedirs(archive_dir)
-    sim = MarketSimulator('datasets', initial_btc_balance=1,
-                          initial_usd_balance=10000,
-                          stock_fee=cfg['stock_fee'], last_deals=cfg['last_deals'],
-                          initial_timestamp=cfg['initial_timestamp'])
+
     # storage = SQLiteStorage(os.path.join(run_folder, 'test.db'))
     storage = JsonStorage(os.path.join(run_folder, 'orders.json'), archive_dir)
 
     ta = TrendAnalyzer(**cfg)
     ta._current_time = lambda: sim.timestamp
 
-    advisor = InstantAdvisor(sim, ta)
-    # ds = ConstDealSizer(**cfg)
-
     deal_provider = DealsProvider(sim.deals)
-    ds = KDEDealSizer(deal_provider, **cfg)
+    ds = TrendDealSizer(deal_provider, **cfg)
     ds._get_time = lambda: sim.timestamp
 
-    timestamp = sim.get_timestamp()
-    last_timestamp = sim.get_max_timestamp()
-    worker = Worker(sim, storage, advisor, ds,
+    advisor = InstantAdvisor(sim, ds)
+    # ds = ConstDealSizer(**cfg)
+
+
+
+
+    worker = Worker(sim, storage, advisor,
                     **cfg)
     worker._get_time = lambda: sim.timestamp
     worker._is_order_partially_completed = lambda x, y: False
     worker._is_order_in_trades = lambda x, y: True
     worker._check_balances = sim.check_balances
-    last_stat_timestamp = timestamp
     while timestamp < last_timestamp:
         try:
-            timestamp += 1
+            timestamp += 10
             logger.debug('Update timestamp: {}'.format(timestamp))
             sim.update_timestamp(timestamp)
             advisor.update_timestamp(timestamp)
@@ -141,6 +152,16 @@ def run(cfg, base_folder, handlers):
     return handlers
 
 
+def run_many(cfg, base_folder, handlers):
+    if 'delta_days' not in cfg or cfg['delta_days'] is None:
+        run(cfg, base_folder, handlers)
+    delta_seconds = cfg['delta_days'] * 24 * 60 * 60
+    initial_ts = cfg['initial_timestamp']
+    last_ts = cfg['last_timestamp']
+    for i in range(initial_ts, last_ts, delta_seconds):
+        cfg['initial_timestamp'] = i
+        run(cfg, base_folder, handlers)
+
 def create_handlers(dr):
     debug_handler = RotatingFileHandler(os.path.join(dr, 'xmb_debug.log'), maxBytes=10000000, backupCount=1000)
     debug_handler.setLevel(logging.INFO)
@@ -160,20 +181,20 @@ class InstantAdvisor:
     def __init__(self, deal_provider, trend_analyzer):
         self._ta = trend_analyzer
         self._deal_provider = deal_provider
-        self.period = 5
+        self.period = 900
         self.timestamp = 0
         self.last_update_ts = 0
 
     def get_advice(self):
-        return self.profile, self.profit_markup, self.reserve_markup, self.avg_price
+        return self.profile, self.profit_markup, self.avg_price, self.deal_size
 
     def get_avg_price(self):
         return self.avg_price
 
     def update_timestamp(self, timestamp):
         if timestamp - self.last_update_ts > self.period:
-            self.profile, self.profit_markup, self.reserve_markup, self.avg_price = self._ta.get_profile(
-                self._deal_provider.get_trades(None, None))
+            self.profile, self.profit_markup, self.avg_price, self.deal_size = self._ta.get_deal_size(
+            )
             self.last_update_ts = timestamp
 
 
@@ -181,17 +202,13 @@ class DealsProvider:
     def __init__(self, all_deals):
         self.all_deals = all_deals
         self.timestamp = 0
-        self.period = 300
-        self.last_update_ts = 0
         self.cur_deals = []
         self.index = 0
 
     def update_timestamp(self, timestamp):
         self.timestamp = timestamp
-        if self.timestamp - self.last_update_ts >= self.period:
-            self.last_update_ts = timestamp
-            while int(self.all_deals[self.index]['date']) < timestamp:
-                self.index += 1
+        while int(self.all_deals[self.index]['date']) < timestamp:
+            self.index += 1
 
     def get_deals(self):
         return self.all_deals[:self.index]
@@ -226,145 +243,27 @@ args = {
 }
 
 cfgs = [
-    {
-        'profit_order_lifetime': 64,
-        'stock_fee': 0.002,
-        'profit_markup': 0.04,
-        'currency_1_deal_size': 0.001,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.04,
 
-        'profit_multiplier': 0,
-        'mean_price_period': 16,
-        'profit_free_weight': 0.04,
-        'profit_currency_down': 'BTC',
-        'profit_currency_up': 'USD',
-        'initial_timestamp': 1517515848,
-        'last_deals': 100,
-        'kde_multiplier': 0,
-        'kde_bandwith': 150,
-        'kde_days': 1
-    },
     {
-        'profit_order_lifetime': 64,
         'stock_fee': 0.002,
         'profit_markup': 0.03,
-        'currency_1_deal_size': 0.001,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.03,
+        'currency_1_deal_size': 0.002,
+        'same_profile_order_price_deviation': 0.01,
 
-        'profit_multiplier': 0,
         'mean_price_period': 16,
-        'profit_free_weight': 0.03,
-        'profit_currency_down': 'BTC',
-        'profit_currency_up': 'USD',
-        'initial_timestamp': 1517515848,
+        'initial_timestamp': 1517170000,
+        'last_timestamp': 1521191711,
         'last_deals': 100,
-        'kde_multiplier': 0,
-        'kde_bandwith': 150,
-        'kde_days': 1
-    },
-    {
-        'profit_order_lifetime': 64,
-        'stock_fee': 0.002,
-        'profit_markup': 0.06,
-        'currency_1_deal_size': 0.001,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.06,
-
-        'profit_multiplier': 0,
-        'mean_price_period': 16,
-        'profit_free_weight': 0.06,
-        'profit_currency_down': 'BTC',
-        'profit_currency_up': 'USD',
-        'initial_timestamp': 1517515848,
-        'last_deals': 100,
-        'kde_multiplier': 0,
-        'kde_bandwith': 150,
-        'kde_days': 1
-    },
-    {
-        'profit_order_lifetime': 64,
-        'stock_fee': 0.002,
-        'profit_markup': 0.05,
-        'currency_1_deal_size': 0.001,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.05,
-
-        'profit_multiplier': 0,
-        'mean_price_period': 16,
-        'profit_free_weight': 0.05,
-        'profit_currency_down': 'BTC',
-        'profit_currency_up': 'USD',
-        'initial_timestamp': 1517515848,
-        'last_deals': 100,
-        'kde_multiplier': 3,
-        'kde_bandwith': 150,
-        'kde_days': 7
-    },
-    {
-        'profit_order_lifetime': 64,
-        'stock_fee': 0.002,
-        'profit_markup': 0.05,
-        'currency_1_deal_size': 0.001,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.05,
-
-        'profit_multiplier': 0,
-        'mean_price_period': 16,
-        'profit_free_weight': 0.05,
-        'profit_currency_down': 'BTC',
-        'profit_currency_up': 'USD',
-        'initial_timestamp': 1517515848,
-        'last_deals': 100,
-        'kde_multiplier': 5,
-        'kde_bandwith': 150,
-        'kde_days': 7
-    },
-    {
-        'profit_order_lifetime': 64,
-        'stock_fee': 0.002,
-        'profit_markup': 0.05,
-        'currency_1_deal_size': 0.001,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.05,
-
-        'profit_multiplier': 0,
-        'mean_price_period': 16,
-        'profit_free_weight': 0.05,
-        'profit_currency_down': 'BTC',
-        'profit_currency_up': 'USD',
-        'initial_timestamp': 1517515848,
-        'last_deals': 100,
-        'kde_multiplier': 3,
-        'kde_bandwith': 150,
-        'kde_days': 10
-    },
-    {
-        'profit_order_lifetime': 64,
-        'stock_fee': 0.002,
-        'profit_markup': 0,
-        'currency_1_deal_size': 0.001,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.004,
-
-        'profit_multiplier': 0,
-        'mean_price_period': 16,
-        'profit_free_weight': 0,
-        'profit_currency_down': 'BTC',
-        'profit_currency_up': 'USD',
-        'initial_timestamp': 1517515848,
-        'last_deals': 100,
-        'kde_multiplier': 0,
-        'kde_bandwith': 150,
-        'kde_days': 1
+        'trend_diff_hours': 5,
+        'trend_rolling_window': 5000,
+        'trend_days': 3,
+        'trend_multiplier': 30,
+        'trend_min_deal_size': 0.0025,
+        'suspend_price_deviation': 0.05,
+        'suspend_price_up_down_deviation': 0.01,
+        'trend_max_deal_size': 0.0025,
+        'duration_days': 30,
+        'delta_days': 2
     },
 ]
 
@@ -374,7 +273,7 @@ configs = [dict(cfg) for cfg in product]
 handlers = []
 for cfg in cfgs:
     try:
-        handlers = run(cfg, 'test_month', handlers)
+        handlers = run_many(cfg, 'test_5_30_pm_003', handlers)
     except:
         logger.exception('Error')
 
