@@ -69,6 +69,20 @@ def get_stats(sim, storage, stock_fee):
 
 
 def run(cfg, base_folder, handlers):
+    sim = MarketSimulator('datasets3', initial_btc_balance=1,
+                          initial_usd_balance=10000,
+                          stock_fee=cfg['stock_fee'], last_deals=cfg['last_deals'],
+                          initial_timestamp=cfg['initial_timestamp'])
+    timestamp = sim.get_timestamp()
+    if 'duration_days' in cfg and cfg['duration_days'] is not None:
+        last_timestamp = timestamp + cfg['duration_days'] * 24 * 60 * 60
+        if last_timestamp > sim.get_max_timestamp():
+            return
+    else:
+        last_timestamp = sim.get_max_timestamp() if 'last_timestamp' not in cfg or cfg['last_timestamp'] is None else \
+        cfg[
+            'last_timestamp']
+
     folder = ''
     for k in sorted(cfg):
         names = k.split('_')
@@ -90,10 +104,7 @@ def run(cfg, base_folder, handlers):
     handlers = create_handlers(logs_dir)
     archive_dir = os.path.join(run_folder, 'archive')
     os.makedirs(archive_dir)
-    sim = MarketSimulator('datasets2', initial_btc_balance=1,
-                          initial_usd_balance=10000,
-                          stock_fee=cfg['stock_fee'], last_deals=cfg['last_deals'],
-                          initial_timestamp=cfg['initial_timestamp'])
+
     # storage = SQLiteStorage(os.path.join(run_folder, 'test.db'))
     storage = JsonStorage(os.path.join(run_folder, 'orders.json'), archive_dir)
 
@@ -109,9 +120,7 @@ def run(cfg, base_folder, handlers):
 
 
 
-    timestamp = sim.get_timestamp()
-    last_timestamp = sim.get_max_timestamp() if 'last_timestamp' not in cfg or cfg['last_timestamp'] is None else cfg[
-        'last_timestamp']
+
     worker = Worker(sim, storage, advisor,
                     **cfg)
     worker._get_time = lambda: sim.timestamp
@@ -142,6 +151,16 @@ def run(cfg, base_folder, handlers):
         json.dump(ok_deals, f, indent=4)
     return handlers
 
+
+def run_many(cfg, base_folder, handlers):
+    if 'delta_days' not in cfg or cfg['delta_days'] is None:
+        run(cfg, base_folder, handlers)
+    delta_seconds = cfg['delta_days'] * 24 * 60 * 60
+    initial_ts = cfg['initial_timestamp']
+    last_ts = cfg['last_timestamp']
+    for i in range(initial_ts, last_ts, delta_seconds):
+        cfg['initial_timestamp'] = i
+        run(cfg, base_folder, handlers)
 
 def create_handlers(dr):
     debug_handler = RotatingFileHandler(os.path.join(dr, 'xmb_debug.log'), maxBytes=10000000, backupCount=1000)
@@ -227,24 +246,24 @@ cfgs = [
 
     {
         'stock_fee': 0.002,
-        'profit_markup': 0.04,
+        'profit_markup': 0.03,
         'currency_1_deal_size': 0.002,
-        'max_profit_orders_up': 100,
-        'max_profit_orders_down': 100,
-        'same_profile_order_price_deviation': 0.032,
+        'same_profile_order_price_deviation': 0.01,
 
         'mean_price_period': 16,
-        'initial_timestamp': 1518050000,
+        'initial_timestamp': 1517170000,
+        'last_timestamp': 1521191711,
         'last_deals': 100,
         'trend_diff_hours': 5,
-        'trend_rolling_window': 4500,
+        'trend_rolling_window': 5000,
         'trend_days': 3,
-        'trend_multiplier': 40,
-        'currency_1_min_deal_size': 0.001,
+        'trend_multiplier': 30,
         'trend_min_deal_size': 0.0025,
         'suspend_price_deviation': 0.05,
         'suspend_price_up_down_deviation': 0.01,
-        'trend_max_deal_size': 0.0025
+        'trend_max_deal_size': 0.0025,
+        'duration_days': 30,
+        'delta_days': 2
     },
 ]
 
@@ -254,7 +273,7 @@ configs = [dict(cfg) for cfg in product]
 handlers = []
 for cfg in cfgs:
     try:
-        handlers = run(cfg, 'test_03_09', handlers)
+        handlers = run_many(cfg, 'test_5_30_pm_003', handlers)
     except:
         logger.exception('Error')
 

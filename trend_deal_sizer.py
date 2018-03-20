@@ -78,6 +78,7 @@ class TrendDealSizer:
                 mean_price_diff) * self._trend_multiplier + 1
             deal_same = mult_base * self._currency_1_deal_size
             avg_price = self._calculate_mean_price(deals, self._mean_price_period)
+
             logger.debug(
                 'Profile: {}\nAvg price: {}\nMean price:{}\nPrev mean price: {}\nDeal size: {}\nMultiplier: {}'.format(
                     profile, avg_price, last_deal['mean'], first_deal['mean'], deal_same, mult_base))

@@ -90,12 +90,12 @@ class Worker:
         if 'max_profit_orders_up' in kwargs:
             self._max_profit_orders_up = kwargs['max_profit_orders_up']
         else:
-            self._max_profit_orders_up = 5
+            self._max_profit_orders_up = 100
 
         if 'max_profit_orders_down' in kwargs:
             self._max_profit_orders_down = kwargs['max_profit_orders_down']
         else:
-            self._max_profit_orders_down = 5
+            self._max_profit_orders_down = 100
 
         if 'same_profile_order_price_deviation' in kwargs:
             self._same_profile_order_price_deviation = kwargs['same_profile_order_price_deviation']
@@ -308,6 +308,7 @@ class Worker:
         if my_amount is None:
             logger.debug('Deal size too small')
             return
+
         order_type = self._reserve_order_type(profile)
         new_order_id = str(self._api.create_order(
             currency_1=self._currency_1,
