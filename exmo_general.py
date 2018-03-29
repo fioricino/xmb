@@ -102,6 +102,12 @@ class Worker:
         else:
             self._same_profile_order_price_deviation = 0.02
 
+        if 'same_profile_order_same_direction_price_deviation' in kwargs:
+            self._same_profile_order_same_direction_price_deviation = kwargs[
+                'same_profile_order_same_direction_price_deviation']
+        else:
+            self._same_profile_order_same_direction_price_deviation = 0.02
+
         if 'profit_currency_up' in kwargs:
             self._profit_currency_up = kwargs['profit_currency_up']
         else:
@@ -287,17 +293,39 @@ class Worker:
                 logger.debug('Too small profit markup: {:.4f} < {}'.format(profit_markup, self._profit_markup))
                 return
             # Ордер с минимальным отклонением от текущей средней цены
+
             if same_profile_orders:
+                smaller_orders = [o for o in same_profile_orders if float(o['price']) <= avg_price]
+                bigger_orders = [o for o in same_profile_orders if float(o['price']) >= avg_price]
+                if profile == 'UP':
+                    same_dir_orders = bigger_orders
+                    other_dir_orders = smaller_orders
+                elif profile == 'DOWN':
+                    same_dir_orders = smaller_orders
+                    other_dir_orders = bigger_orders
+                else:
+                    raise ValueError('Invalid profile: {}'.format(profile))
                 # TODO check
-                min_price_diff = min(
-                    [abs(float(
-                        o['price'] if o['order_type'] == 'RESERVE' else o['base_order'][
-                            'price']) - avg_price) for o in same_profile_orders]) / avg_price
-                # Првоеряем минимальное отклонение цены от существующих ордеров:
-                if min_price_diff <= self._same_profile_order_price_deviation:
-                    logger.debug('Price deviation with other orders is too small: {} < {}'.format(min_price_diff,
-                                                                                                  self._same_profile_order_price_deviation))
-                    return
+                if other_dir_orders:
+                    min_price_diff = min(
+                        [abs(float(
+                            o['price'] if o['order_type'] == 'RESERVE' else o['base_order'][
+                                'price']) - avg_price) for o in other_dir_orders]) / avg_price
+                    # Првоеряем минимальное отклонение цены от существующих ордеров:
+                    if min_price_diff <= self._same_profile_order_price_deviation:
+                        logger.debug('Price deviation with other orders is too small: {} < {}'.format(min_price_diff,
+                                                                                                      self._same_profile_order_price_deviation))
+                        return
+                if same_dir_orders:
+                    min_price_diff = min(
+                        [abs(float(
+                            o['price'] if o['order_type'] == 'RESERVE' else o['base_order'][
+                                'price']) - avg_price) for o in same_dir_orders]) / avg_price
+                    # Првоеряем минимальное отклонение цены от существующих ордеров:
+                    if min_price_diff <= self._same_profile_order_same_direction_price_deviation:
+                        logger.debug('Price deviation with other orders is too small: {} < {}'.format(min_price_diff,
+                                                                                                      self._same_profile_order_price_deviation))
+                        return
             self._create_reserve_order(profile, avg_price, 0, deal_size)
         except Exception as e:
             logger.exception('Cannot make reserve')
@@ -323,6 +351,7 @@ class Worker:
             # Order already completed
             # Fixme what to do in this case?
             time.sleep(1)
+            open_orders = self._get_open_orders_for_create()
             new_orders = [order for order in open_orders if str(order['order_id']) == new_order_id]
             if not new_orders:
                 user_trades = self._get_user_trades()
@@ -380,6 +409,7 @@ class Worker:
             # Order already completed
             # Fixme what to do in this case?
             time.sleep(1)
+            open_orders = self._get_open_orders_for_create()
             new_orders = [order for order in open_orders if str(order['order_id']) == new_order_id]
             if not new_orders:
                 user_trades = self._get_user_trades()

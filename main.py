@@ -49,24 +49,25 @@ args = {
     'stock_fee': 0.002,
     'profit_markup': 0.05,
     'reserve_price_avg_price_deviation': 0.002,
-    'currency_1_deal_size': 0.002,
+    'currency_1_deal_size': 0.004,
     'max_profit_orders_up': 100,
     'max_profit_orders_down': 100,
     'same_profile_order_price_deviation': 0.01,
+    'same_profile_order_same_direction_price_deviation': 0.07,
     'profit_currency_down': 'BTC',
     'profit_currency_up': 'USD',
     'profit_multiplier': 0,
     'mean_price_period': 16,
     'deal_read_days': 4,
-    'trend_diff_hours': 5,
+    'trend_diff_hours': 2,
     'trend_rolling_window': 4000,
     'trend_days': 3,
-    'trend_multiplier': 30,
+    'trend_multiplier': 60,
     'currency_1_min_deal_size': 0.001,
     'suspend_price_deviation': 0.05,
     'suspend_price_up_down_deviation': 0.01,
-    'trend_max_deal_size': 0.0025,
-    'trend_min_deal_size': 0.0025
+    'trend_max_deal_size': 0.005,
+    'trend_min_deal_size': 0.005
 }
 
 if __name__ == '__main__':

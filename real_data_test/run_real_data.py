@@ -4,6 +4,7 @@ import logging
 import os
 from datetime import datetime
 
+from KDEDealSizer import KDEDealSizer
 from calc import Calc
 from json_api import JsonStorage
 from trend_deal_sizer import TrendDealSizer
@@ -117,9 +118,7 @@ def run(cfg, base_folder, handlers):
 
     advisor = InstantAdvisor(sim, ds)
     # ds = ConstDealSizer(**cfg)
-
-
-
+    kds = KDEDealSizer(deal_provider, **cfg)
 
     worker = Worker(sim, storage, advisor,
                     **cfg)
@@ -243,28 +242,26 @@ args = {
 }
 
 cfgs = [
-
     {
         'stock_fee': 0.002,
-        'profit_markup': 0.03,
+        'profit_markup': 0.05,
         'currency_1_deal_size': 0.002,
-        'same_profile_order_price_deviation': 0.01,
+        'same_profile_order_price_deviation': 0.05,
+        'same_profile_order_same_direction_price_deviation': 0.05,
 
         'mean_price_period': 16,
-        'initial_timestamp': 1517170000,
-        'last_timestamp': 1521191711,
+        'initial_timestamp': 1518730000,
         'last_deals': 100,
-        'trend_diff_hours': 5,
-        'trend_rolling_window': 5000,
         'trend_days': 3,
-        'trend_multiplier': 30,
+        'trend_diff_hours': 2,
+        'trend_multiplier': 60,
         'trend_min_deal_size': 0.0025,
         'suspend_price_deviation': 0.05,
         'suspend_price_up_down_deviation': 0.01,
         'trend_max_deal_size': 0.0025,
-        'duration_days': 30,
-        'delta_days': 2
+
     },
+
 ]
 
 d = [list(zip(itertools.repeat(arg, len(values)), values)) for arg, values in args.items()]
@@ -273,7 +270,7 @@ configs = [dict(cfg) for cfg in product]
 handlers = []
 for cfg in cfgs:
     try:
-        handlers = run_many(cfg, 'test_5_30_pm_003', handlers)
+        handlers = run(cfg, 'test_03_24', handlers)
     except:
         logger.exception('Error')
 

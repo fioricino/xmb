@@ -13,9 +13,9 @@ from sqlite_api import SQLiteStorage
 from trend_analyze import TrendAnalyzer
 
 deals_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\datasets3'
-run_folder = None  # r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\test_03_16\c1ds_0.002_c1mds_0
-# .001_it_1518050000_ld_100_mpp_16_pm_0.05_spopd_0.04_sf_0.002_spd_0.05_spudd_0.01_td_3_tdh_5_tmds_0.0025_tmds_0
-# .0025_tm_40_trw_4000_'
+run_folder = r'C:\Users\ozavorot\Documents\GitHub\xmb\real_data_test\test_03_24\c1ds_0' \
+             r'.002_it_1518730000_ld_100_mpp_16_pm_0.05_spopd_0.01_sposdpd_0.01_sf_0.002_spd_0.05_spudd_0' \
+             r'.01_td_3_tdh_2_tmds_0.0025_tmds_0.0025_tm_60_'
 db_file = None  # r'C:\Users\ozavorot\Documents\GitHub\xmb\datasets\orders.db'
 
 

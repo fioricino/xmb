@@ -38,7 +38,7 @@ class TrendDealSizer:
         if 'trend_diff_hours' in kwargs:
             self._trend_diff_hours = int(kwargs['trend_diff_hours'])
         else:
-            self._trend_diff_hours = 24
+            self._trend_diff_hours = 5
 
         if 'currency_1_deal_size' in kwargs:
             self._currency_1_deal_size = kwargs['currency_1_deal_size']

@@ -25,14 +25,9 @@ class KDEDealSizer:
         if 'kde_days' in kwargs:
             self._kde_days = int(kwargs['kde_days'])
         else:
-            self._kde_days = 7
+            self._kde_days = 30
 
-        if 'currency_1_deal_size' in kwargs:
-            self._currency_1_deal_size = kwargs['currency_1_deal_size']
-        else:
-            self._currency_1_deal_size = 0.001
-
-    def get_deal_size(self, price, profile):
+    def get_deal_size(self, price, profile, deal_size):
         try:
             ds = self._deals_provider.get_deals()
             delta = timedelta(days=self._kde_days).total_seconds()
@@ -55,10 +50,10 @@ class KDEDealSizer:
             cdf_mult = cdf * self._kde_multiplier
             # score = np.exp(kde.score(np.array(avg_price).reshape(1, 1)))
             # pdf = score * (max(prices) - min(prices)) * self._kde_multiplier
-            return max(self._currency_1_deal_size, cdf_mult * self._currency_1_deal_size)
+            return max(deal_size, cdf_mult * deal_size)
         except:
             logger.exception('Cannot calculate deal size')
-            return self._currency_1_deal_size
+            return None
 
     def _get_time(self):
         return int(time.time())
