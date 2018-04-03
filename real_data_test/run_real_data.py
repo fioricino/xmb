@@ -180,7 +180,7 @@ class InstantAdvisor:
     def __init__(self, deal_provider, trend_analyzer):
         self._ta = trend_analyzer
         self._deal_provider = deal_provider
-        self.period = 900
+        self.period = 300
         self.timestamp = 0
         self.last_update_ts = 0
 
@@ -242,24 +242,22 @@ args = {
 }
 
 cfgs = [
+
     {
         'stock_fee': 0.002,
-        'profit_markup': 0.05,
-        'currency_1_deal_size': 0.002,
-        'same_profile_order_price_deviation': 0.05,
-        'same_profile_order_same_direction_price_deviation': 0.05,
+        'profit_markup': 0.01,
+        'currency_1_deal_size': 0.0025,
+        'same_profile_order_price_deviation': 0.03,
+        'same_profile_order_same_direction_price_deviation': 0.03,
 
         'mean_price_period': 16,
         'initial_timestamp': 1518730000,
         'last_deals': 100,
-        'trend_days': 3,
-        'trend_diff_hours': 2,
-        'trend_multiplier': 60,
+        'trend_days': 1,
         'trend_min_deal_size': 0.0025,
         'suspend_price_deviation': 0.05,
         'suspend_price_up_down_deviation': 0.01,
         'trend_max_deal_size': 0.0025,
-
     },
 
 ]
@@ -270,7 +268,7 @@ configs = [dict(cfg) for cfg in product]
 handlers = []
 for cfg in cfgs:
     try:
-        handlers = run(cfg, 'test_03_24', handlers)
+        handlers = run(cfg, 'test_grid', handlers)
     except:
         logger.exception('Error')
 

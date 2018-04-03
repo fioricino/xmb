@@ -2,8 +2,6 @@ import logging
 import time
 from datetime import timedelta
 
-import pandas as pd
-
 logger = logging.getLogger('xmb')
 
 
@@ -57,32 +55,33 @@ class TrendDealSizer:
 
     def get_deal_size(self):
         try:
-            ds = self._deals_provider.get_deals()
+            ds = self._deals_provider.get_deals()[-200:]
             delta = timedelta(days=self._trend_days).total_seconds()
             start_time = self._get_time() - delta
             deals = [d for d in ds if d['date'] > start_time]
-            prices = [float(p['price']) for p in deals]
-            deals_df = pd.DataFrame(deals).convert_objects(convert_numeric=True)
+            # prices = [float(p['price']) for p in deals]
+            # deals_df = pd.DataFrame(deals).convert_objects(convert_numeric=True)
             # deals_df['time'] = pd.to_datetime(deals_df['date'], unit='s')
             # deals_df = deals_df.set_index('time')
-            deals_df['mean'] = deals_df['price'].rolling(self._trend_rolling_window).mean()
-            last_deal = deals_df.iloc[-1]
-            der_delta = timedelta(hours=self._trend_diff_hours).total_seconds()
-            start_time = int(last_deal['date']) - der_delta
-            first_deal = deals_df[deals_df['date'] >= start_time].iloc[0]
-
-            mean_price_diff = (last_deal['mean'] - first_deal['mean']) / first_deal['mean']
-            profile = 'UP' if mean_price_diff > 0 else 'DOWN'
-
-            mult_base = abs(
-                mean_price_diff) * self._trend_multiplier + 1
-            deal_same = mult_base * self._currency_1_deal_size
+            # deals_df['mean'] = deals_df['price'].rolling(self._trend_rolling_window).mean()
+            # last_deal = deals_df.iloc[-1]
+            # der_delta = timedelta(hours=self._trend_diff_hours).total_seconds()
+            # start_time = int(last_deal['date']) - der_delta
+            # first_deal = deals_df[deals_df['date'] >= start_time].iloc[0]
+            #
+            # mean_price_diff = (last_deal['mean'] - first_deal['mean']) / first_deal['mean']
+            # profile = 'UP' if mean_price_diff > 0 else 'DOWN'
+            #
+            # mult_base = abs(
+            #     mean_price_diff) * self._trend_multiplier + 1
+            # deal_same = mult_base * self._currency_1_deal_size
             avg_price = self._calculate_mean_price(deals, self._mean_price_period)
 
-            logger.debug(
-                'Profile: {}\nAvg price: {}\nMean price:{}\nPrev mean price: {}\nDeal size: {}\nMultiplier: {}'.format(
-                    profile, avg_price, last_deal['mean'], first_deal['mean'], deal_same, mult_base))
-            return profile, self._profit_markup, avg_price, min(deal_same, self._trend_max_deal_size)
+            # logger.debug(
+            #     'Profile: {}\nAvg price: {}\nMean price:{}\nPrev mean price: {}\nDeal size: {}\nMultiplier: {
+            # }'.format(
+            #         profile, avg_price, last_deal['mean'], first_deal['mean'], deal_same, mult_base))
+            return None, self._profit_markup, avg_price, None
         except:
             logger.exception('Cannot calculate deal size')
             return None, None, None, None

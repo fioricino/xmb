@@ -213,26 +213,28 @@ class Worker:
 
     def _handle_open_reserve_order(self, order, user_trades):
         profile, profit_markup, mean_price, deal_size = self._advisor.get_advice()
-        if order['profile'] == profile:
-            my_need_price = self._calculate_desired_reserve_price(mean_price, profile, 0)
-            if math.fabs(my_need_price - float(order['price'])) > float(
-                    order['price']) * self._reserve_price_avg_price_deviation:
-                logger.debug('Reserve price has changed for order {} -> {}: {}'
-                             .format(order['order_id'], order['price'], my_need_price))
-                is_order_partially_completed = self._is_order_partially_completed(order, user_trades)
-                if is_order_partially_completed:
-                    logger.debug('Order {} is partially completed'.format(order['order_id']))
-                else:
-                    self._cancel_order(order)
-
-        else:
-            #TODO id it required?
-            logger.debug('Profile has changed for order {}: {} -> {}'
-                         .format(order['order_id'], order['profile'], profile))
-            if profit_markup < self._profit_markup:
-                logger.debug("Profit to small, won't cancel order {}".format(order['order_id']))
+        profile = order['profile']
+        deal_size = self._trend_min_deal_size
+        # if order['profile'] == profile:
+        my_need_price = self._calculate_desired_reserve_price(mean_price, profile, 0)
+        if math.fabs(my_need_price - float(order['price'])) > float(
+                order['price']) * self._reserve_price_avg_price_deviation:
+            logger.debug('Reserve price has changed for order {} -> {}: {}'
+                         .format(order['order_id'], order['price'], my_need_price))
+            is_order_partially_completed = self._is_order_partially_completed(order, user_trades)
+            if is_order_partially_completed:
+                logger.debug('Order {} is partially completed'.format(order['order_id']))
             else:
                 self._cancel_order(order)
+
+                # else:
+                #     #TODO id it required?
+                #     logger.debug('Profile has changed for order {}: {} -> {}'
+                #                  .format(order['order_id'], order['profile'], profile))
+                #     if profit_markup < self._profit_markup:
+                #         logger.debug("Profit to small, won't cancel order {}".format(order['order_id']))
+                #     else:
+                #         self._cancel_order(order)
 
     def _is_order_partially_completed(self, order, user_trades):
         return order['order_id'] in [str(t['order_id']) for t in
@@ -250,6 +252,8 @@ class Worker:
             profit_orders = [o for o in all_orders if o['order_type'] == 'PROFIT'
                              and o['base_order']['order_id'] == order['order_id']]
             profile, profit_markup, avg_price, deal_size = self._advisor.get_advice()
+            profile = order['profile']
+            deal_size = self._trend_min_deal_size
             price = float(order['price'])
             if not profit_orders:
                 if self._suspend_deviation is None \
@@ -280,55 +284,61 @@ class Worker:
         try:
             profile, profit_markup, avg_price, deal_size = self._advisor.get_advice()
             all_orders = self._storage.get_open_orders()
-            same_profile_orders = [o for o in all_orders if o['profile'] == profile and o['order_type'] == 'RESERVE'
-                                   # or o['status'] == 'WAIT_FOR_PROFIT' and not o['order_id']
-                                   #                                           in [oo[
-                                   #                                                  'base_order'] if 'base_order' in oo else None
-                                   #                                             for oo in all_orders]
-                                   ]
-            if len(same_profile_orders) >= self._get_max_open_profit_orders_limit(profile):
-                logger.debug('Too much orders for profile {}: {}'.format(profile, len(same_profile_orders)))
-                return
-            if profit_markup < self._profit_markup:
-                logger.debug('Too small profit markup: {:.4f} < {}'.format(profit_markup, self._profit_markup))
-                return
-            # Ордер с минимальным отклонением от текущей средней цены
-
-            if same_profile_orders:
-                smaller_orders = [o for o in same_profile_orders if float(o['price']) <= avg_price]
-                bigger_orders = [o for o in same_profile_orders if float(o['price']) >= avg_price]
-                if profile == 'UP':
-                    same_dir_orders = bigger_orders
-                    other_dir_orders = smaller_orders
-                elif profile == 'DOWN':
-                    same_dir_orders = smaller_orders
-                    other_dir_orders = bigger_orders
-                else:
-                    raise ValueError('Invalid profile: {}'.format(profile))
-                # TODO check
-                if other_dir_orders:
-                    min_price_diff = min(
-                        [abs(float(
-                            o['price'] if o['order_type'] == 'RESERVE' else o['base_order'][
-                                'price']) - avg_price) for o in other_dir_orders]) / avg_price
-                    # Првоеряем минимальное отклонение цены от существующих ордеров:
-                    if min_price_diff <= self._same_profile_order_price_deviation:
-                        logger.debug('Price deviation with other orders is too small: {} < {}'.format(min_price_diff,
-                                                                                                      self._same_profile_order_price_deviation))
-                        return
-                if same_dir_orders:
-                    min_price_diff = min(
-                        [abs(float(
-                            o['price'] if o['order_type'] == 'RESERVE' else o['base_order'][
-                                'price']) - avg_price) for o in same_dir_orders]) / avg_price
-                    # Првоеряем минимальное отклонение цены от существующих ордеров:
-                    if min_price_diff <= self._same_profile_order_same_direction_price_deviation:
-                        logger.debug('Price deviation with other orders is too small: {} < {}'.format(min_price_diff,
-                                                                                                      self._same_profile_order_price_deviation))
-                        return
-            self._create_reserve_order(profile, avg_price, 0, deal_size)
+            for profile in ['UP', 'DOWN']:
+                self._make_reserve_profile(profile, avg_price, self._trend_min_deal_size, self._profit_markup,
+                                           all_orders)
         except Exception as e:
             logger.exception('Cannot make reserve')
+
+    def _make_reserve_profile(self, profile, avg_price, deal_size, profit_markup, all_orders):
+        same_profile_orders = [o for o in all_orders if o['profile'] == profile and o['order_type'] == 'RESERVE'
+                               # or o['status'] == 'WAIT_FOR_PROFIT' and not o['order_id']
+                               #                                           in [oo[
+                               #                                                  'base_order'] if 'base_order' in oo
+                               #  else None
+                               #                                             for oo in all_orders]
+                               ]
+        if len(same_profile_orders) >= self._get_max_open_profit_orders_limit(profile):
+            logger.debug('Too much orders for profile {}: {}'.format(profile, len(same_profile_orders)))
+            return
+        if profit_markup < self._profit_markup:
+            logger.debug('Too small profit markup: {:.4f} < {}'.format(profit_markup, self._profit_markup))
+            return
+            # Ордер с минимальным отклонением от текущей средней цены
+
+        if same_profile_orders:
+            smaller_orders = [o for o in same_profile_orders if float(o['price']) <= avg_price]
+            bigger_orders = [o for o in same_profile_orders if float(o['price']) >= avg_price]
+            if profile == 'UP':
+                same_dir_orders = bigger_orders
+                other_dir_orders = smaller_orders
+            elif profile == 'DOWN':
+                same_dir_orders = smaller_orders
+                other_dir_orders = bigger_orders
+            else:
+                raise ValueError('Invalid profile: {}'.format(profile))
+            # TODO check
+            if other_dir_orders:
+                min_price_diff = min(
+                    [abs(float(
+                        o['price'] if o['order_type'] == 'RESERVE' else o['base_order'][
+                            'price']) - avg_price) for o in other_dir_orders]) / avg_price
+                # Првоеряем минимальное отклонение цены от существующих ордеров:
+                if min_price_diff <= self._same_profile_order_price_deviation:
+                    logger.debug('Price deviation with other orders is too small: {} < {}'.format(min_price_diff,
+                                                                                                  self._same_profile_order_price_deviation))
+                    return
+            if same_dir_orders:
+                min_price_diff = min(
+                    [abs(float(
+                        o['price'] if o['order_type'] == 'RESERVE' else o['base_order'][
+                            'price']) - avg_price) for o in same_dir_orders]) / avg_price
+                # Првоеряем минимальное отклонение цены от существующих ордеров:
+                if min_price_diff <= self._same_profile_order_same_direction_price_deviation:
+                    logger.debug('Price deviation with other orders is too small: {} < {}'.format(min_price_diff,
+                                                                                                  self._same_profile_order_price_deviation))
+                    return
+        self._create_reserve_order(profile, avg_price, 0, deal_size)
 
     def _create_reserve_order(self, profile, avg_price, reserve_markup, deal_size):
         my_need_price = self._calculate_desired_reserve_price(avg_price, profile, reserve_markup)
