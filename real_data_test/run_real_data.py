@@ -245,13 +245,13 @@ cfgs = [
 
     {
         'stock_fee': 0.002,
-        'profit_markup': 0.01,
+        'profit_markup': 0.05,
         'currency_1_deal_size': 0.0025,
-        'same_profile_order_price_deviation': 0.03,
+        'same_profile_order_price_deviation': 0.01,
         'same_profile_order_same_direction_price_deviation': 0.03,
 
         'mean_price_period': 16,
-        'initial_timestamp': 1518730000,
+        'initial_timestamp': 1517170000,
         'last_deals': 100,
         'trend_days': 1,
         'trend_min_deal_size': 0.0025,
@@ -259,7 +259,22 @@ cfgs = [
         'suspend_price_up_down_deviation': 0.01,
         'trend_max_deal_size': 0.0025,
     },
+    {
+        'stock_fee': 0.002,
+        'profit_markup': 0.05,
+        'currency_1_deal_size': 0.0025,
+        'same_profile_order_price_deviation': 0.01,
+        'same_profile_order_same_direction_price_deviation': 0.07,
 
+        'mean_price_period': 16,
+        'initial_timestamp': 1517170000,
+        'last_deals': 100,
+        'trend_days': 1,
+        'trend_min_deal_size': 0.0025,
+        'suspend_price_deviation': 0.05,
+        'suspend_price_up_down_deviation': 0.01,
+        'trend_max_deal_size': 0.0025,
+    },
 ]
 
 d = [list(zip(itertools.repeat(arg, len(values)), values)) for arg, values in args.items()]
